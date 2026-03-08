@@ -485,21 +485,12 @@ class _MainShellState extends ConsumerState<MainShell> {
                             return Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [
-                                        AppTheme.primaryMid,
-                                        AppTheme.accent,
-                                      ],
-                                    ),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: const Icon(
-                                    Icons.storefront_rounded,
-                                    color: Colors.white,
-                                    size: 18,
+                                Hero(
+                                  tag: 'app_logo_shell',
+                                  child: Image.asset(
+                                    'assets/images/app_logo.png',
+                                    width: 32,
+                                    height: 32,
                                   ),
                                 ),
                                 const SizedBox(width: 10),

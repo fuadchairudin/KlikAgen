@@ -62,18 +62,12 @@ class _SidebarMenuState extends State<SidebarMenu> {
                     Expanded(
                       child: Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [AppTheme.primaryMid, AppTheme.accent],
-                              ),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(
-                              Icons.storefront_rounded,
-                              color: Colors.white,
-                              size: 22,
+                          Hero(
+                            tag: 'app_logo',
+                            child: Image.asset(
+                              'assets/images/app_logo.png',
+                              width: 38,
+                              height: 38,
                             ),
                           ),
                           const SizedBox(width: 12),
