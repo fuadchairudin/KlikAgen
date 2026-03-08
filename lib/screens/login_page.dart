@@ -96,18 +96,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppTheme.primaryMid, AppTheme.accent],
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Icon(
-                      Icons.lock_person_rounded,
-                      size: 48,
-                      color: Colors.white,
+                  Hero(
+                    tag: 'app_logo_login',
+                    child: Image.asset(
+                      'assets/images/app_logo.png',
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.contain,
                     ),
                   ),
                   const SizedBox(height: 24),
