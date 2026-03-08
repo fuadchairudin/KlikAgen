@@ -2,8 +2,7 @@ import 'dart:io';
 import 'package:image/image.dart';
 
 void main() {
-  final inputPath =
-      'C:\\Users\\A C E R N I T R O\\.gemini\\antigravity\\brain\\9298edaa-6784-4452-92ab-63da61e55460\\klik_agen_logo_transparent_1772939461467.png';
+  final inputPath = 'd:\\KlikAgen\\klik_agen_logo.png';
   final pngOutputPath = 'assets\\images\\app_logo.png';
   final icoOutputPath = 'windows\\runner\\resources\\app_icon.ico';
 

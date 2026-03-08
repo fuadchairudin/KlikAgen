@@ -485,15 +485,6 @@ class _MainShellState extends ConsumerState<MainShell> {
                             return Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Hero(
-                                  tag: 'app_logo_shell',
-                                  child: Image.asset(
-                                    'assets/images/app_logo.png',
-                                    width: 32,
-                                    height: 32,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   mainAxisSize: MainAxisSize.min,
