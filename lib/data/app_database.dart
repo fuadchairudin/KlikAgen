@@ -47,6 +47,8 @@ class Transactions extends Table {
   TextColumn get customerName => text().nullable()();
   IntColumn get walletId => integer().withDefault(const Constant(1))();
   DateTimeColumn get createdAt => dateTime()();
+  IntColumn get receivableId =>
+      integer().nullable().references(Receivables, #id)();
 }
 
 /// Pengeluaran operasional
@@ -138,7 +140,7 @@ class AppDatabase extends _$AppDatabase {
   factory AppDatabase.forTesting(QueryExecutor e) => AppDatabase._internal(e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -170,6 +172,11 @@ class AppDatabase extends _$AppDatabase {
       if (from < 4) {
         try {
           await m.addColumn(adjustments, adjustments.fee);
+        } catch (_) {}
+      }
+      if (from < 5) {
+        try {
+          await m.addColumn(transactions, transactions.receivableId);
         } catch (_) {}
       }
     },

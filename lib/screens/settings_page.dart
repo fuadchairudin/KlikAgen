@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'package:drift/drift.dart' hide Column;
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:path/path.dart' as p;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/settings_provider.dart';
 import '../providers/database_provider.dart';
@@ -118,6 +121,58 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
     );
   }
 
+  Future<void> _exportDatabase() async {
+    try {
+      final dbFolderPath = await getApplicationDocumentsPath();
+      final dbFile = File(p.join(dbFolderPath, 'klikagen_drift.db'));
+
+      if (!await dbFile.exists()) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Database belum dibuat.'),
+              backgroundColor: AppTheme.accentRed,
+            ),
+          );
+        }
+        return;
+      }
+
+      final now = DateTime.now();
+      final dateStr = DateFormat('yyyyMMdd_HHmmss').format(now);
+      final defaultName = 'klikagen_backup_$dateStr.db';
+
+      final String? selectedDirectory = await FilePicker.platform.saveFile(
+        dialogTitle: 'Simpan Backup Database',
+        fileName: defaultName,
+        type: FileType.custom,
+        allowedExtensions: ['db'],
+      );
+
+      if (selectedDirectory != null) {
+        await dbFile.copy(selectedDirectory);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Backup berhasil disimpan:\n$selectedDirectory'),
+              backgroundColor: AppTheme.accentGreen,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal backup database: $e'),
+            backgroundColor: AppTheme.accentRed,
+          ),
+        );
+      }
+    }
+  }
+
   // ═══════════════════════════════════════
   //  GENERAL TAB
   // ═══════════════════════════════════════
@@ -165,13 +220,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           icon: Icons.storefront_rounded,
           children: [
             _buildSettingTextField(
-              label: 'Nama Toko (Akan tampil di Menu Samping)',
+              label: 'Nama Toko (Tampil di Header)',
               value: state.settings['shop_name'] ?? '',
               onSave: (val) async {
                 await ref.read(databaseProvider).saveSetting('shop_name', val);
-                ref
-                    .read(settingsProvider.notifier)
-                    .refresh(); // Re-trigger sidebar query
+                ref.read(settingsProvider.notifier).refresh();
               },
             ),
             const SizedBox(height: 12),
@@ -194,6 +247,35 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                 ref.read(settingsProvider.notifier).refresh();
               },
               keyboardType: TextInputType.phone,
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // Backup Database
+        _buildSettingSection(
+          title: 'Backup Database',
+          icon: Icons.save_rounded,
+          children: [
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text(
+                'Ekspor Database',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(
+                'Simpan file database aplikasi ke penyimpanan Anda.',
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+              ),
+              trailing: ElevatedButton.icon(
+                onPressed: _exportDatabase,
+                icon: const Icon(Icons.download_rounded, size: 18),
+                label: const Text('Backup'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.accent,
+                  foregroundColor: Colors.white,
+                ),
+              ),
             ),
           ],
         ),

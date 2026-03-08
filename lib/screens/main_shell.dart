@@ -17,6 +17,7 @@ import '../widgets/sidebar_menu.dart';
 import '../widgets/atoms/app_chip.dart';
 import '../theme/app_theme.dart';
 import '../providers/navigation_provider.dart';
+import '../providers/settings_provider.dart';
 
 class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
@@ -39,6 +40,8 @@ class _MainShellState extends ConsumerState<MainShell> {
   @override
   void initState() {
     super.initState();
+    // Load settings so shop info is available in header
+    Future.microtask(() => ref.read(settingsProvider.notifier).loadData());
   }
 
   void _handleKeyEvent(KeyEvent event) {
@@ -116,6 +119,7 @@ class _MainShellState extends ConsumerState<MainShell> {
             ),
             onPressed: () {
               Navigator.pop(context);
+              ref.read(appDateProvider.notifier).resetToToday();
               ref.read(authProvider.notifier).logout();
               Navigator.pushAndRemoveUntil(
                 context,
@@ -269,18 +273,19 @@ class _MainShellState extends ConsumerState<MainShell> {
                       return;
                     }
 
+                    final messenger = ScaffoldMessenger.of(context);
+                    final navigator = Navigator.of(context);
+
                     try {
                       final db = ref.read(databaseProvider);
-                      // Make sure to import drift or specify exact object
-                      // But auth is already a User from app_database.dart
                       final updatedUser = auth.copyWith(
                         password: passwordCtrl.text,
                       );
                       await db.updateUser(updatedUser);
 
                       if (mounted) {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        navigator.pop();
+                        messenger.showSnackBar(
                           const SnackBar(
                             content: Text('Password berhasil diubah!'),
                             backgroundColor: AppTheme.accentGreen,
@@ -289,7 +294,7 @@ class _MainShellState extends ConsumerState<MainShell> {
                       }
                     } catch (e) {
                       if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                           const SnackBar(
                             content: Text('Terjadi kesalahan!'),
                             backgroundColor: AppTheme.accentRed,
@@ -446,8 +451,9 @@ class _MainShellState extends ConsumerState<MainShell> {
             SidebarMenu(
               selectedIndex: ref.watch(navigationIndexProvider),
               isAdmin: auth?.role == 'Admin',
-              onItemSelected: (index) =>
-                  ref.read(navigationIndexProvider.notifier).state = index,
+              onItemSelected: (index) {
+                ref.read(navigationIndexProvider.notifier).state = index;
+              },
             ),
             Expanded(
               child: Column(
@@ -468,6 +474,65 @@ class _MainShellState extends ConsumerState<MainShell> {
                     ),
                     child: Row(
                       children: [
+                        // ── Shop Info (Left) ──
+                        Builder(
+                          builder: (context) {
+                            final settings = ref.watch(settingsProvider);
+                            final shopName =
+                                settings.settings['shop_name'] ?? 'Klik Agen';
+                            final shopAddress =
+                                settings.settings['shop_address'] ?? '';
+                            return Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        AppTheme.primaryMid,
+                                        AppTheme.accent,
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Icon(
+                                    Icons.storefront_rounded,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      shopName,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: -0.3,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurface,
+                                      ),
+                                    ),
+                                    if (shopAddress.isNotEmpty)
+                                      Text(
+                                        shopAddress,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppTheme.textSecondary,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                        const Spacer(),
                         // ── Date Picker Chip ──
                         InkWell(
                           onTap: _pickDate,
@@ -577,11 +642,135 @@ class _MainShellState extends ConsumerState<MainShell> {
                               ),
                             ),
                           ),
-                        const Spacer(),
-                        // ── Profile Button ──
-                        InkWell(
-                          onTap: _showProfileDialog,
-                          borderRadius: BorderRadius.circular(10),
+                        const SizedBox(width: 12),
+                        // ── Profile Dropdown ──
+                        PopupMenuButton<String>(
+                          offset: const Offset(0, 48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          color: Theme.of(context).cardColor,
+                          onSelected: (value) {
+                            if (value == 'password') {
+                              _showProfileDialog();
+                            } else if (value == 'logout') {
+                              _confirmLogout();
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            // ── User Info (non-selectable header) ──
+                            PopupMenuItem<String>(
+                              enabled: false,
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: AppTheme.primaryMid
+                                        .withValues(alpha: 0.3),
+                                    child: const Icon(
+                                      Icons.person_rounded,
+                                      size: 18,
+                                      color: AppTheme.accent,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        auth?.username ?? '',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurface,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: auth?.role == 'Admin'
+                                              ? AppTheme.accentOrange
+                                                    .withValues(alpha: 0.2)
+                                              : AppTheme.accentGreen.withValues(
+                                                  alpha: 0.2,
+                                                ),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          auth?.role ?? '',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: auth?.role == 'Admin'
+                                                ? AppTheme.accentOrange
+                                                : AppTheme.accentGreen,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuDivider(),
+                            // ── Ubah Password ──
+                            PopupMenuItem<String>(
+                              value: 'password',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.lock_outline_rounded,
+                                    size: 18,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    'Ubah Password',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuDivider(),
+                            // ── Logout ──
+                            PopupMenuItem<String>(
+                              value: 'logout',
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.logout_rounded,
+                                    size: 18,
+                                    color: AppTheme.accentRed,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  const Text(
+                                    'Keluar',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppTheme.accentRed,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
@@ -620,35 +809,13 @@ class _MainShellState extends ConsumerState<MainShell> {
                                     ).colorScheme.onSurface,
                                   ),
                                 ),
+                                const SizedBox(width: 4),
+                                Icon(
+                                  Icons.arrow_drop_down_rounded,
+                                  size: 18,
+                                  color: AppTheme.textSecondary,
+                                ),
                               ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        // ── Logout Button ──
-                        Tooltip(
-                          message: 'Keluar',
-                          child: InkWell(
-                            onTap: _confirmLogout,
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppTheme.accentRed.withValues(
-                                  alpha: 0.1,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: AppTheme.accentRed.withValues(
-                                    alpha: 0.2,
-                                  ),
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.logout_rounded,
-                                size: 18,
-                                color: AppTheme.accentRed,
-                              ),
                             ),
                           ),
                         ),
@@ -660,7 +827,11 @@ class _MainShellState extends ConsumerState<MainShell> {
                     child: Container(
                       color: Theme.of(context).scaffoldBackgroundColor,
                       child: IndexedStack(
-                        index: ref.watch(navigationIndexProvider),
+                        index:
+                            (auth?.role != 'Admin' &&
+                                ref.watch(navigationIndexProvider) == 6)
+                            ? 0
+                            : ref.watch(navigationIndexProvider),
                         children: _pages,
                       ),
                     ),

@@ -889,6 +889,309 @@ class PriceConfigsCompanion extends UpdateCompanion<PriceConfig> {
   }
 }
 
+class $ReceivablesTable extends Receivables
+    with TableInfo<$ReceivablesTable, Receivable> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReceivablesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _customerNameMeta = const VerificationMeta(
+    'customerName',
+  );
+  @override
+  late final GeneratedColumn<String> customerName = GeneratedColumn<String>(
+    'customer_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _totalDebtMeta = const VerificationMeta(
+    'totalDebt',
+  );
+  @override
+  late final GeneratedColumn<double> totalDebt = GeneratedColumn<double>(
+    'total_debt',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, customerName, totalDebt, status];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'receivables';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Receivable> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('customer_name')) {
+      context.handle(
+        _customerNameMeta,
+        customerName.isAcceptableOrUnknown(
+          data['customer_name']!,
+          _customerNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_customerNameMeta);
+    }
+    if (data.containsKey('total_debt')) {
+      context.handle(
+        _totalDebtMeta,
+        totalDebt.isAcceptableOrUnknown(data['total_debt']!, _totalDebtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_totalDebtMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Receivable map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Receivable(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      customerName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}customer_name'],
+      )!,
+      totalDebt: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}total_debt'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+    );
+  }
+
+  @override
+  $ReceivablesTable createAlias(String alias) {
+    return $ReceivablesTable(attachedDatabase, alias);
+  }
+}
+
+class Receivable extends DataClass implements Insertable<Receivable> {
+  final int id;
+  final String customerName;
+  final double totalDebt;
+  final String status;
+  const Receivable({
+    required this.id,
+    required this.customerName,
+    required this.totalDebt,
+    required this.status,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['customer_name'] = Variable<String>(customerName);
+    map['total_debt'] = Variable<double>(totalDebt);
+    map['status'] = Variable<String>(status);
+    return map;
+  }
+
+  ReceivablesCompanion toCompanion(bool nullToAbsent) {
+    return ReceivablesCompanion(
+      id: Value(id),
+      customerName: Value(customerName),
+      totalDebt: Value(totalDebt),
+      status: Value(status),
+    );
+  }
+
+  factory Receivable.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Receivable(
+      id: serializer.fromJson<int>(json['id']),
+      customerName: serializer.fromJson<String>(json['customerName']),
+      totalDebt: serializer.fromJson<double>(json['totalDebt']),
+      status: serializer.fromJson<String>(json['status']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'customerName': serializer.toJson<String>(customerName),
+      'totalDebt': serializer.toJson<double>(totalDebt),
+      'status': serializer.toJson<String>(status),
+    };
+  }
+
+  Receivable copyWith({
+    int? id,
+    String? customerName,
+    double? totalDebt,
+    String? status,
+  }) => Receivable(
+    id: id ?? this.id,
+    customerName: customerName ?? this.customerName,
+    totalDebt: totalDebt ?? this.totalDebt,
+    status: status ?? this.status,
+  );
+  Receivable copyWithCompanion(ReceivablesCompanion data) {
+    return Receivable(
+      id: data.id.present ? data.id.value : this.id,
+      customerName: data.customerName.present
+          ? data.customerName.value
+          : this.customerName,
+      totalDebt: data.totalDebt.present ? data.totalDebt.value : this.totalDebt,
+      status: data.status.present ? data.status.value : this.status,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Receivable(')
+          ..write('id: $id, ')
+          ..write('customerName: $customerName, ')
+          ..write('totalDebt: $totalDebt, ')
+          ..write('status: $status')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, customerName, totalDebt, status);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Receivable &&
+          other.id == this.id &&
+          other.customerName == this.customerName &&
+          other.totalDebt == this.totalDebt &&
+          other.status == this.status);
+}
+
+class ReceivablesCompanion extends UpdateCompanion<Receivable> {
+  final Value<int> id;
+  final Value<String> customerName;
+  final Value<double> totalDebt;
+  final Value<String> status;
+  const ReceivablesCompanion({
+    this.id = const Value.absent(),
+    this.customerName = const Value.absent(),
+    this.totalDebt = const Value.absent(),
+    this.status = const Value.absent(),
+  });
+  ReceivablesCompanion.insert({
+    this.id = const Value.absent(),
+    required String customerName,
+    required double totalDebt,
+    required String status,
+  }) : customerName = Value(customerName),
+       totalDebt = Value(totalDebt),
+       status = Value(status);
+  static Insertable<Receivable> custom({
+    Expression<int>? id,
+    Expression<String>? customerName,
+    Expression<double>? totalDebt,
+    Expression<String>? status,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (customerName != null) 'customer_name': customerName,
+      if (totalDebt != null) 'total_debt': totalDebt,
+      if (status != null) 'status': status,
+    });
+  }
+
+  ReceivablesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? customerName,
+    Value<double>? totalDebt,
+    Value<String>? status,
+  }) {
+    return ReceivablesCompanion(
+      id: id ?? this.id,
+      customerName: customerName ?? this.customerName,
+      totalDebt: totalDebt ?? this.totalDebt,
+      status: status ?? this.status,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (customerName.present) {
+      map['customer_name'] = Variable<String>(customerName.value);
+    }
+    if (totalDebt.present) {
+      map['total_debt'] = Variable<double>(totalDebt.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReceivablesCompanion(')
+          ..write('id: $id, ')
+          ..write('customerName: $customerName, ')
+          ..write('totalDebt: $totalDebt, ')
+          ..write('status: $status')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $TransactionsTable extends Transactions
     with TableInfo<$TransactionsTable, Transaction> {
   @override
@@ -1006,6 +1309,20 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _receivableIdMeta = const VerificationMeta(
+    'receivableId',
+  );
+  @override
+  late final GeneratedColumn<int> receivableId = GeneratedColumn<int>(
+    'receivable_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES receivables (id)',
+    ),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1018,6 +1335,7 @@ class $TransactionsTable extends Transactions
     customerName,
     walletId,
     createdAt,
+    receivableId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1097,6 +1415,15 @@ class $TransactionsTable extends Transactions
     } else if (isInserting) {
       context.missing(_createdAtMeta);
     }
+    if (data.containsKey('receivable_id')) {
+      context.handle(
+        _receivableIdMeta,
+        receivableId.isAcceptableOrUnknown(
+          data['receivable_id']!,
+          _receivableIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1146,6 +1473,10 @@ class $TransactionsTable extends Transactions
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      receivableId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}receivable_id'],
+      ),
     );
   }
 
@@ -1166,6 +1497,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   final String? customerName;
   final int walletId;
   final DateTime createdAt;
+  final int? receivableId;
   const Transaction({
     required this.id,
     required this.type,
@@ -1177,6 +1509,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     this.customerName,
     required this.walletId,
     required this.createdAt,
+    this.receivableId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1193,6 +1526,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     }
     map['wallet_id'] = Variable<int>(walletId);
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || receivableId != null) {
+      map['receivable_id'] = Variable<int>(receivableId);
+    }
     return map;
   }
 
@@ -1210,6 +1546,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           : Value(customerName),
       walletId: Value(walletId),
       createdAt: Value(createdAt),
+      receivableId: receivableId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(receivableId),
     );
   }
 
@@ -1229,6 +1568,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       customerName: serializer.fromJson<String?>(json['customerName']),
       walletId: serializer.fromJson<int>(json['walletId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      receivableId: serializer.fromJson<int?>(json['receivableId']),
     );
   }
   @override
@@ -1245,6 +1585,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'customerName': serializer.toJson<String?>(customerName),
       'walletId': serializer.toJson<int>(walletId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'receivableId': serializer.toJson<int?>(receivableId),
     };
   }
 
@@ -1259,6 +1600,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     Value<String?> customerName = const Value.absent(),
     int? walletId,
     DateTime? createdAt,
+    Value<int?> receivableId = const Value.absent(),
   }) => Transaction(
     id: id ?? this.id,
     type: type ?? this.type,
@@ -1270,6 +1612,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     customerName: customerName.present ? customerName.value : this.customerName,
     walletId: walletId ?? this.walletId,
     createdAt: createdAt ?? this.createdAt,
+    receivableId: receivableId.present ? receivableId.value : this.receivableId,
   );
   Transaction copyWithCompanion(TransactionsCompanion data) {
     return Transaction(
@@ -1285,6 +1628,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           : this.customerName,
       walletId: data.walletId.present ? data.walletId.value : this.walletId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      receivableId: data.receivableId.present
+          ? data.receivableId.value
+          : this.receivableId,
     );
   }
 
@@ -1300,7 +1646,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('isPiutang: $isPiutang, ')
           ..write('customerName: $customerName, ')
           ..write('walletId: $walletId, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('receivableId: $receivableId')
           ..write(')'))
         .toString();
   }
@@ -1317,6 +1664,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     customerName,
     walletId,
     createdAt,
+    receivableId,
   );
   @override
   bool operator ==(Object other) =>
@@ -1331,7 +1679,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.isPiutang == this.isPiutang &&
           other.customerName == this.customerName &&
           other.walletId == this.walletId &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.receivableId == this.receivableId);
 }
 
 class TransactionsCompanion extends UpdateCompanion<Transaction> {
@@ -1345,6 +1694,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<String?> customerName;
   final Value<int> walletId;
   final Value<DateTime> createdAt;
+  final Value<int?> receivableId;
   const TransactionsCompanion({
     this.id = const Value.absent(),
     this.type = const Value.absent(),
@@ -1356,6 +1706,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.customerName = const Value.absent(),
     this.walletId = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.receivableId = const Value.absent(),
   });
   TransactionsCompanion.insert({
     this.id = const Value.absent(),
@@ -1368,6 +1719,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.customerName = const Value.absent(),
     this.walletId = const Value.absent(),
     required DateTime createdAt,
+    this.receivableId = const Value.absent(),
   }) : type = Value(type),
        amount = Value(amount),
        createdAt = Value(createdAt);
@@ -1382,6 +1734,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<String>? customerName,
     Expression<int>? walletId,
     Expression<DateTime>? createdAt,
+    Expression<int>? receivableId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1394,6 +1747,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (customerName != null) 'customer_name': customerName,
       if (walletId != null) 'wallet_id': walletId,
       if (createdAt != null) 'created_at': createdAt,
+      if (receivableId != null) 'receivable_id': receivableId,
     });
   }
 
@@ -1408,6 +1762,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Value<String?>? customerName,
     Value<int>? walletId,
     Value<DateTime>? createdAt,
+    Value<int?>? receivableId,
   }) {
     return TransactionsCompanion(
       id: id ?? this.id,
@@ -1420,6 +1775,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       customerName: customerName ?? this.customerName,
       walletId: walletId ?? this.walletId,
       createdAt: createdAt ?? this.createdAt,
+      receivableId: receivableId ?? this.receivableId,
     );
   }
 
@@ -1456,6 +1812,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (receivableId.present) {
+      map['receivable_id'] = Variable<int>(receivableId.value);
+    }
     return map;
   }
 
@@ -1471,7 +1830,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('isPiutang: $isPiutang, ')
           ..write('customerName: $customerName, ')
           ..write('walletId: $walletId, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('receivableId: $receivableId')
           ..write(')'))
         .toString();
   }
@@ -1872,309 +2232,6 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
           ..write('description: $description, ')
           ..write('walletId: $walletId, ')
           ..write('createdAt: $createdAt')
-          ..write(')'))
-        .toString();
-  }
-}
-
-class $ReceivablesTable extends Receivables
-    with TableInfo<$ReceivablesTable, Receivable> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $ReceivablesTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
-    'id',
-    aliasedName,
-    false,
-    hasAutoIncrement: true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'PRIMARY KEY AUTOINCREMENT',
-    ),
-  );
-  static const VerificationMeta _customerNameMeta = const VerificationMeta(
-    'customerName',
-  );
-  @override
-  late final GeneratedColumn<String> customerName = GeneratedColumn<String>(
-    'customer_name',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _totalDebtMeta = const VerificationMeta(
-    'totalDebt',
-  );
-  @override
-  late final GeneratedColumn<double> totalDebt = GeneratedColumn<double>(
-    'total_debt',
-    aliasedName,
-    false,
-    type: DriftSqlType.double,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _statusMeta = const VerificationMeta('status');
-  @override
-  late final GeneratedColumn<String> status = GeneratedColumn<String>(
-    'status',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  @override
-  List<GeneratedColumn> get $columns => [id, customerName, totalDebt, status];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'receivables';
-  @override
-  VerificationContext validateIntegrity(
-    Insertable<Receivable> instance, {
-    bool isInserting = false,
-  }) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    }
-    if (data.containsKey('customer_name')) {
-      context.handle(
-        _customerNameMeta,
-        customerName.isAcceptableOrUnknown(
-          data['customer_name']!,
-          _customerNameMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_customerNameMeta);
-    }
-    if (data.containsKey('total_debt')) {
-      context.handle(
-        _totalDebtMeta,
-        totalDebt.isAcceptableOrUnknown(data['total_debt']!, _totalDebtMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_totalDebtMeta);
-    }
-    if (data.containsKey('status')) {
-      context.handle(
-        _statusMeta,
-        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_statusMeta);
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  Receivable map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Receivable(
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}id'],
-      )!,
-      customerName: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}customer_name'],
-      )!,
-      totalDebt: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
-        data['${effectivePrefix}total_debt'],
-      )!,
-      status: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}status'],
-      )!,
-    );
-  }
-
-  @override
-  $ReceivablesTable createAlias(String alias) {
-    return $ReceivablesTable(attachedDatabase, alias);
-  }
-}
-
-class Receivable extends DataClass implements Insertable<Receivable> {
-  final int id;
-  final String customerName;
-  final double totalDebt;
-  final String status;
-  const Receivable({
-    required this.id,
-    required this.customerName,
-    required this.totalDebt,
-    required this.status,
-  });
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
-    map['customer_name'] = Variable<String>(customerName);
-    map['total_debt'] = Variable<double>(totalDebt);
-    map['status'] = Variable<String>(status);
-    return map;
-  }
-
-  ReceivablesCompanion toCompanion(bool nullToAbsent) {
-    return ReceivablesCompanion(
-      id: Value(id),
-      customerName: Value(customerName),
-      totalDebt: Value(totalDebt),
-      status: Value(status),
-    );
-  }
-
-  factory Receivable.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return Receivable(
-      id: serializer.fromJson<int>(json['id']),
-      customerName: serializer.fromJson<String>(json['customerName']),
-      totalDebt: serializer.fromJson<double>(json['totalDebt']),
-      status: serializer.fromJson<String>(json['status']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
-      'customerName': serializer.toJson<String>(customerName),
-      'totalDebt': serializer.toJson<double>(totalDebt),
-      'status': serializer.toJson<String>(status),
-    };
-  }
-
-  Receivable copyWith({
-    int? id,
-    String? customerName,
-    double? totalDebt,
-    String? status,
-  }) => Receivable(
-    id: id ?? this.id,
-    customerName: customerName ?? this.customerName,
-    totalDebt: totalDebt ?? this.totalDebt,
-    status: status ?? this.status,
-  );
-  Receivable copyWithCompanion(ReceivablesCompanion data) {
-    return Receivable(
-      id: data.id.present ? data.id.value : this.id,
-      customerName: data.customerName.present
-          ? data.customerName.value
-          : this.customerName,
-      totalDebt: data.totalDebt.present ? data.totalDebt.value : this.totalDebt,
-      status: data.status.present ? data.status.value : this.status,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('Receivable(')
-          ..write('id: $id, ')
-          ..write('customerName: $customerName, ')
-          ..write('totalDebt: $totalDebt, ')
-          ..write('status: $status')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(id, customerName, totalDebt, status);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is Receivable &&
-          other.id == this.id &&
-          other.customerName == this.customerName &&
-          other.totalDebt == this.totalDebt &&
-          other.status == this.status);
-}
-
-class ReceivablesCompanion extends UpdateCompanion<Receivable> {
-  final Value<int> id;
-  final Value<String> customerName;
-  final Value<double> totalDebt;
-  final Value<String> status;
-  const ReceivablesCompanion({
-    this.id = const Value.absent(),
-    this.customerName = const Value.absent(),
-    this.totalDebt = const Value.absent(),
-    this.status = const Value.absent(),
-  });
-  ReceivablesCompanion.insert({
-    this.id = const Value.absent(),
-    required String customerName,
-    required double totalDebt,
-    required String status,
-  }) : customerName = Value(customerName),
-       totalDebt = Value(totalDebt),
-       status = Value(status);
-  static Insertable<Receivable> custom({
-    Expression<int>? id,
-    Expression<String>? customerName,
-    Expression<double>? totalDebt,
-    Expression<String>? status,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (customerName != null) 'customer_name': customerName,
-      if (totalDebt != null) 'total_debt': totalDebt,
-      if (status != null) 'status': status,
-    });
-  }
-
-  ReceivablesCompanion copyWith({
-    Value<int>? id,
-    Value<String>? customerName,
-    Value<double>? totalDebt,
-    Value<String>? status,
-  }) {
-    return ReceivablesCompanion(
-      id: id ?? this.id,
-      customerName: customerName ?? this.customerName,
-      totalDebt: totalDebt ?? this.totalDebt,
-      status: status ?? this.status,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<int>(id.value);
-    }
-    if (customerName.present) {
-      map['customer_name'] = Variable<String>(customerName.value);
-    }
-    if (totalDebt.present) {
-      map['total_debt'] = Variable<double>(totalDebt.value);
-    }
-    if (status.present) {
-      map['status'] = Variable<String>(status.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('ReceivablesCompanion(')
-          ..write('id: $id, ')
-          ..write('customerName: $customerName, ')
-          ..write('totalDebt: $totalDebt, ')
-          ..write('status: $status')
           ..write(')'))
         .toString();
   }
@@ -3553,9 +3610,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $WalletsTable wallets = $WalletsTable(this);
   late final $ServicesTable services = $ServicesTable(this);
   late final $PriceConfigsTable priceConfigs = $PriceConfigsTable(this);
+  late final $ReceivablesTable receivables = $ReceivablesTable(this);
   late final $TransactionsTable transactions = $TransactionsTable(this);
   late final $ExpensesTable expenses = $ExpensesTable(this);
-  late final $ReceivablesTable receivables = $ReceivablesTable(this);
   late final $ReceivableLogsTable receivableLogs = $ReceivableLogsTable(this);
   late final $AdjustmentsTable adjustments = $AdjustmentsTable(this);
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
@@ -3568,9 +3625,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     wallets,
     services,
     priceConfigs,
+    receivables,
     transactions,
     expenses,
-    receivables,
     receivableLogs,
     adjustments,
     appSettings,
@@ -4091,6 +4148,388 @@ typedef $$PriceConfigsTableProcessedTableManager =
       PriceConfig,
       PrefetchHooks Function()
     >;
+typedef $$ReceivablesTableCreateCompanionBuilder =
+    ReceivablesCompanion Function({
+      Value<int> id,
+      required String customerName,
+      required double totalDebt,
+      required String status,
+    });
+typedef $$ReceivablesTableUpdateCompanionBuilder =
+    ReceivablesCompanion Function({
+      Value<int> id,
+      Value<String> customerName,
+      Value<double> totalDebt,
+      Value<String> status,
+    });
+
+final class $$ReceivablesTableReferences
+    extends BaseReferences<_$AppDatabase, $ReceivablesTable, Receivable> {
+  $$ReceivablesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$TransactionsTable, List<Transaction>>
+  _transactionsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.transactions,
+    aliasName: $_aliasNameGenerator(
+      db.receivables.id,
+      db.transactions.receivableId,
+    ),
+  );
+
+  $$TransactionsTableProcessedTableManager get transactionsRefs {
+    final manager = $$TransactionsTableTableManager(
+      $_db,
+      $_db.transactions,
+    ).filter((f) => f.receivableId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_transactionsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$ReceivableLogsTable, List<ReceivableLog>>
+  _receivableLogsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.receivableLogs,
+    aliasName: $_aliasNameGenerator(
+      db.receivables.id,
+      db.receivableLogs.receivableId,
+    ),
+  );
+
+  $$ReceivableLogsTableProcessedTableManager get receivableLogsRefs {
+    final manager = $$ReceivableLogsTableTableManager(
+      $_db,
+      $_db.receivableLogs,
+    ).filter((f) => f.receivableId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_receivableLogsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$ReceivablesTableFilterComposer
+    extends Composer<_$AppDatabase, $ReceivablesTable> {
+  $$ReceivablesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customerName => $composableBuilder(
+    column: $table.customerName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get totalDebt => $composableBuilder(
+    column: $table.totalDebt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> transactionsRefs(
+    Expression<bool> Function($$TransactionsTableFilterComposer f) f,
+  ) {
+    final $$TransactionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.transactions,
+      getReferencedColumn: (t) => t.receivableId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransactionsTableFilterComposer(
+            $db: $db,
+            $table: $db.transactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> receivableLogsRefs(
+    Expression<bool> Function($$ReceivableLogsTableFilterComposer f) f,
+  ) {
+    final $$ReceivableLogsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.receivableLogs,
+      getReferencedColumn: (t) => t.receivableId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ReceivableLogsTableFilterComposer(
+            $db: $db,
+            $table: $db.receivableLogs,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$ReceivablesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ReceivablesTable> {
+  $$ReceivablesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get customerName => $composableBuilder(
+    column: $table.customerName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get totalDebt => $composableBuilder(
+    column: $table.totalDebt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ReceivablesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ReceivablesTable> {
+  $$ReceivablesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get customerName => $composableBuilder(
+    column: $table.customerName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get totalDebt =>
+      $composableBuilder(column: $table.totalDebt, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  Expression<T> transactionsRefs<T extends Object>(
+    Expression<T> Function($$TransactionsTableAnnotationComposer a) f,
+  ) {
+    final $$TransactionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.transactions,
+      getReferencedColumn: (t) => t.receivableId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransactionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.transactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> receivableLogsRefs<T extends Object>(
+    Expression<T> Function($$ReceivableLogsTableAnnotationComposer a) f,
+  ) {
+    final $$ReceivableLogsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.receivableLogs,
+      getReferencedColumn: (t) => t.receivableId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ReceivableLogsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.receivableLogs,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$ReceivablesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ReceivablesTable,
+          Receivable,
+          $$ReceivablesTableFilterComposer,
+          $$ReceivablesTableOrderingComposer,
+          $$ReceivablesTableAnnotationComposer,
+          $$ReceivablesTableCreateCompanionBuilder,
+          $$ReceivablesTableUpdateCompanionBuilder,
+          (Receivable, $$ReceivablesTableReferences),
+          Receivable,
+          PrefetchHooks Function({
+            bool transactionsRefs,
+            bool receivableLogsRefs,
+          })
+        > {
+  $$ReceivablesTableTableManager(_$AppDatabase db, $ReceivablesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReceivablesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ReceivablesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ReceivablesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> customerName = const Value.absent(),
+                Value<double> totalDebt = const Value.absent(),
+                Value<String> status = const Value.absent(),
+              }) => ReceivablesCompanion(
+                id: id,
+                customerName: customerName,
+                totalDebt: totalDebt,
+                status: status,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String customerName,
+                required double totalDebt,
+                required String status,
+              }) => ReceivablesCompanion.insert(
+                id: id,
+                customerName: customerName,
+                totalDebt: totalDebt,
+                status: status,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$ReceivablesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({transactionsRefs = false, receivableLogsRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (transactionsRefs) db.transactions,
+                    if (receivableLogsRefs) db.receivableLogs,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (transactionsRefs)
+                        await $_getPrefetchedData<
+                          Receivable,
+                          $ReceivablesTable,
+                          Transaction
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ReceivablesTableReferences
+                              ._transactionsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ReceivablesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).transactionsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.receivableId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (receivableLogsRefs)
+                        await $_getPrefetchedData<
+                          Receivable,
+                          $ReceivablesTable,
+                          ReceivableLog
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ReceivablesTableReferences
+                              ._receivableLogsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ReceivablesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).receivableLogsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.receivableId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$ReceivablesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ReceivablesTable,
+      Receivable,
+      $$ReceivablesTableFilterComposer,
+      $$ReceivablesTableOrderingComposer,
+      $$ReceivablesTableAnnotationComposer,
+      $$ReceivablesTableCreateCompanionBuilder,
+      $$ReceivablesTableUpdateCompanionBuilder,
+      (Receivable, $$ReceivablesTableReferences),
+      Receivable,
+      PrefetchHooks Function({bool transactionsRefs, bool receivableLogsRefs})
+    >;
 typedef $$TransactionsTableCreateCompanionBuilder =
     TransactionsCompanion Function({
       Value<int> id,
@@ -4103,6 +4542,7 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<String?> customerName,
       Value<int> walletId,
       required DateTime createdAt,
+      Value<int?> receivableId,
     });
 typedef $$TransactionsTableUpdateCompanionBuilder =
     TransactionsCompanion Function({
@@ -4116,7 +4556,32 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<String?> customerName,
       Value<int> walletId,
       Value<DateTime> createdAt,
+      Value<int?> receivableId,
     });
+
+final class $$TransactionsTableReferences
+    extends BaseReferences<_$AppDatabase, $TransactionsTable, Transaction> {
+  $$TransactionsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $ReceivablesTable _receivableIdTable(_$AppDatabase db) =>
+      db.receivables.createAlias(
+        $_aliasNameGenerator(db.transactions.receivableId, db.receivables.id),
+      );
+
+  $$ReceivablesTableProcessedTableManager? get receivableId {
+    final $_column = $_itemColumn<int>('receivable_id');
+    if ($_column == null) return null;
+    final manager = $$ReceivablesTableTableManager(
+      $_db,
+      $_db.receivables,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_receivableIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
 
 class $$TransactionsTableFilterComposer
     extends Composer<_$AppDatabase, $TransactionsTable> {
@@ -4176,6 +4641,29 @@ class $$TransactionsTableFilterComposer
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
   );
+
+  $$ReceivablesTableFilterComposer get receivableId {
+    final $$ReceivablesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.receivableId,
+      referencedTable: $db.receivables,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ReceivablesTableFilterComposer(
+            $db: $db,
+            $table: $db.receivables,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$TransactionsTableOrderingComposer
@@ -4236,6 +4724,29 @@ class $$TransactionsTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  $$ReceivablesTableOrderingComposer get receivableId {
+    final $$ReceivablesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.receivableId,
+      referencedTable: $db.receivables,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ReceivablesTableOrderingComposer(
+            $db: $db,
+            $table: $db.receivables,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$TransactionsTableAnnotationComposer
@@ -4278,6 +4789,29 @@ class $$TransactionsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$ReceivablesTableAnnotationComposer get receivableId {
+    final $$ReceivablesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.receivableId,
+      referencedTable: $db.receivables,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ReceivablesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.receivables,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$TransactionsTableTableManager
@@ -4291,12 +4825,9 @@ class $$TransactionsTableTableManager
           $$TransactionsTableAnnotationComposer,
           $$TransactionsTableCreateCompanionBuilder,
           $$TransactionsTableUpdateCompanionBuilder,
-          (
-            Transaction,
-            BaseReferences<_$AppDatabase, $TransactionsTable, Transaction>,
-          ),
+          (Transaction, $$TransactionsTableReferences),
           Transaction,
-          PrefetchHooks Function()
+          PrefetchHooks Function({bool receivableId})
         > {
   $$TransactionsTableTableManager(_$AppDatabase db, $TransactionsTable table)
     : super(
@@ -4321,6 +4852,7 @@ class $$TransactionsTableTableManager
                 Value<String?> customerName = const Value.absent(),
                 Value<int> walletId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<int?> receivableId = const Value.absent(),
               }) => TransactionsCompanion(
                 id: id,
                 type: type,
@@ -4332,6 +4864,7 @@ class $$TransactionsTableTableManager
                 customerName: customerName,
                 walletId: walletId,
                 createdAt: createdAt,
+                receivableId: receivableId,
               ),
           createCompanionCallback:
               ({
@@ -4345,6 +4878,7 @@ class $$TransactionsTableTableManager
                 Value<String?> customerName = const Value.absent(),
                 Value<int> walletId = const Value.absent(),
                 required DateTime createdAt,
+                Value<int?> receivableId = const Value.absent(),
               }) => TransactionsCompanion.insert(
                 id: id,
                 type: type,
@@ -4356,11 +4890,57 @@ class $$TransactionsTableTableManager
                 customerName: customerName,
                 walletId: walletId,
                 createdAt: createdAt,
+                receivableId: receivableId,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$TransactionsTableReferences(db, table, e),
+                ),
+              )
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({receivableId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (receivableId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.receivableId,
+                                referencedTable: $$TransactionsTableReferences
+                                    ._receivableIdTable(db),
+                                referencedColumn: $$TransactionsTableReferences
+                                    ._receivableIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
         ),
       );
 }
@@ -4375,12 +4955,9 @@ typedef $$TransactionsTableProcessedTableManager =
       $$TransactionsTableAnnotationComposer,
       $$TransactionsTableCreateCompanionBuilder,
       $$TransactionsTableUpdateCompanionBuilder,
-      (
-        Transaction,
-        BaseReferences<_$AppDatabase, $TransactionsTable, Transaction>,
-      ),
+      (Transaction, $$TransactionsTableReferences),
       Transaction,
-      PrefetchHooks Function()
+      PrefetchHooks Function({bool receivableId})
     >;
 typedef $$ExpensesTableCreateCompanionBuilder =
     ExpensesCompanion Function({
@@ -4590,291 +5167,6 @@ typedef $$ExpensesTableProcessedTableManager =
       (Expense, BaseReferences<_$AppDatabase, $ExpensesTable, Expense>),
       Expense,
       PrefetchHooks Function()
-    >;
-typedef $$ReceivablesTableCreateCompanionBuilder =
-    ReceivablesCompanion Function({
-      Value<int> id,
-      required String customerName,
-      required double totalDebt,
-      required String status,
-    });
-typedef $$ReceivablesTableUpdateCompanionBuilder =
-    ReceivablesCompanion Function({
-      Value<int> id,
-      Value<String> customerName,
-      Value<double> totalDebt,
-      Value<String> status,
-    });
-
-final class $$ReceivablesTableReferences
-    extends BaseReferences<_$AppDatabase, $ReceivablesTable, Receivable> {
-  $$ReceivablesTableReferences(super.$_db, super.$_table, super.$_typedResult);
-
-  static MultiTypedResultKey<$ReceivableLogsTable, List<ReceivableLog>>
-  _receivableLogsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.receivableLogs,
-    aliasName: $_aliasNameGenerator(
-      db.receivables.id,
-      db.receivableLogs.receivableId,
-    ),
-  );
-
-  $$ReceivableLogsTableProcessedTableManager get receivableLogsRefs {
-    final manager = $$ReceivableLogsTableTableManager(
-      $_db,
-      $_db.receivableLogs,
-    ).filter((f) => f.receivableId.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_receivableLogsRefsTable($_db));
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
-}
-
-class $$ReceivablesTableFilterComposer
-    extends Composer<_$AppDatabase, $ReceivablesTable> {
-  $$ReceivablesTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<int> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get customerName => $composableBuilder(
-    column: $table.customerName,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<double> get totalDebt => $composableBuilder(
-    column: $table.totalDebt,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get status => $composableBuilder(
-    column: $table.status,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  Expression<bool> receivableLogsRefs(
-    Expression<bool> Function($$ReceivableLogsTableFilterComposer f) f,
-  ) {
-    final $$ReceivableLogsTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.receivableLogs,
-      getReferencedColumn: (t) => t.receivableId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ReceivableLogsTableFilterComposer(
-            $db: $db,
-            $table: $db.receivableLogs,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-}
-
-class $$ReceivablesTableOrderingComposer
-    extends Composer<_$AppDatabase, $ReceivablesTable> {
-  $$ReceivablesTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<int> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get customerName => $composableBuilder(
-    column: $table.customerName,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<double> get totalDebt => $composableBuilder(
-    column: $table.totalDebt,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get status => $composableBuilder(
-    column: $table.status,
-    builder: (column) => ColumnOrderings(column),
-  );
-}
-
-class $$ReceivablesTableAnnotationComposer
-    extends Composer<_$AppDatabase, $ReceivablesTable> {
-  $$ReceivablesTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<int> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get customerName => $composableBuilder(
-    column: $table.customerName,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<double> get totalDebt =>
-      $composableBuilder(column: $table.totalDebt, builder: (column) => column);
-
-  GeneratedColumn<String> get status =>
-      $composableBuilder(column: $table.status, builder: (column) => column);
-
-  Expression<T> receivableLogsRefs<T extends Object>(
-    Expression<T> Function($$ReceivableLogsTableAnnotationComposer a) f,
-  ) {
-    final $$ReceivableLogsTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.receivableLogs,
-      getReferencedColumn: (t) => t.receivableId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ReceivableLogsTableAnnotationComposer(
-            $db: $db,
-            $table: $db.receivableLogs,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-}
-
-class $$ReceivablesTableTableManager
-    extends
-        RootTableManager<
-          _$AppDatabase,
-          $ReceivablesTable,
-          Receivable,
-          $$ReceivablesTableFilterComposer,
-          $$ReceivablesTableOrderingComposer,
-          $$ReceivablesTableAnnotationComposer,
-          $$ReceivablesTableCreateCompanionBuilder,
-          $$ReceivablesTableUpdateCompanionBuilder,
-          (Receivable, $$ReceivablesTableReferences),
-          Receivable,
-          PrefetchHooks Function({bool receivableLogsRefs})
-        > {
-  $$ReceivablesTableTableManager(_$AppDatabase db, $ReceivablesTable table)
-    : super(
-        TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$ReceivablesTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$ReceivablesTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$ReceivablesTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                Value<String> customerName = const Value.absent(),
-                Value<double> totalDebt = const Value.absent(),
-                Value<String> status = const Value.absent(),
-              }) => ReceivablesCompanion(
-                id: id,
-                customerName: customerName,
-                totalDebt: totalDebt,
-                status: status,
-              ),
-          createCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                required String customerName,
-                required double totalDebt,
-                required String status,
-              }) => ReceivablesCompanion.insert(
-                id: id,
-                customerName: customerName,
-                totalDebt: totalDebt,
-                status: status,
-              ),
-          withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable(table),
-                  $$ReceivablesTableReferences(db, table, e),
-                ),
-              )
-              .toList(),
-          prefetchHooksCallback: ({receivableLogsRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [
-                if (receivableLogsRefs) db.receivableLogs,
-              ],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (receivableLogsRefs)
-                    await $_getPrefetchedData<
-                      Receivable,
-                      $ReceivablesTable,
-                      ReceivableLog
-                    >(
-                      currentTable: table,
-                      referencedTable: $$ReceivablesTableReferences
-                          ._receivableLogsRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$ReceivablesTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).receivableLogsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where(
-                            (e) => e.receivableId == item.id,
-                          ),
-                      typedResults: items,
-                    ),
-                ];
-              },
-            );
-          },
-        ),
-      );
-}
-
-typedef $$ReceivablesTableProcessedTableManager =
-    ProcessedTableManager<
-      _$AppDatabase,
-      $ReceivablesTable,
-      Receivable,
-      $$ReceivablesTableFilterComposer,
-      $$ReceivablesTableOrderingComposer,
-      $$ReceivablesTableAnnotationComposer,
-      $$ReceivablesTableCreateCompanionBuilder,
-      $$ReceivablesTableUpdateCompanionBuilder,
-      (Receivable, $$ReceivablesTableReferences),
-      Receivable,
-      PrefetchHooks Function({bool receivableLogsRefs})
     >;
 typedef $$ReceivableLogsTableCreateCompanionBuilder =
     ReceivableLogsCompanion Function({
@@ -5770,12 +6062,12 @@ class $AppDatabaseManager {
       $$ServicesTableTableManager(_db, _db.services);
   $$PriceConfigsTableTableManager get priceConfigs =>
       $$PriceConfigsTableTableManager(_db, _db.priceConfigs);
+  $$ReceivablesTableTableManager get receivables =>
+      $$ReceivablesTableTableManager(_db, _db.receivables);
   $$TransactionsTableTableManager get transactions =>
       $$TransactionsTableTableManager(_db, _db.transactions);
   $$ExpensesTableTableManager get expenses =>
       $$ExpensesTableTableManager(_db, _db.expenses);
-  $$ReceivablesTableTableManager get receivables =>
-      $$ReceivablesTableTableManager(_db, _db.receivables);
   $$ReceivableLogsTableTableManager get receivableLogs =>
       $$ReceivableLogsTableTableManager(_db, _db.receivableLogs);
   $$AdjustmentsTableTableManager get adjustments =>

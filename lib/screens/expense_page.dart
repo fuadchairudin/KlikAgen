@@ -440,6 +440,16 @@ class _ExpensePageState extends ConsumerState<ExpensePage> {
                         ),
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    Text(
+                      DateFormat(
+                        'dd MMM yyyy, HH:mm',
+                      ).format(expense.createdAt),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
                   ],
                 ),
               ],

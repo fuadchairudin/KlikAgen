@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,6 +20,7 @@ class TransactionPage extends ConsumerStatefulWidget {
 }
 
 class _TransactionPageState extends ConsumerState<TransactionPage> {
+  Timer? _debounce;
   final _formKey = GlobalKey<FormState>();
   String _selectedType = 'Transfer';
   Service? _selectedService;
@@ -30,6 +32,9 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
   final _adminBankController = TextEditingController();
   final _adminUserController = TextEditingController();
   final _customerNameController = TextEditingController();
+  final _typeController = TextEditingController();
+  final _walletController = TextEditingController();
+  final _serviceController = TextEditingController();
 
   // Focus Nodes for Keyboard Navigation
   final FocusNode _typeFocusNode = FocusNode();
@@ -73,14 +78,30 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
       if (mounted) setState(() {});
     });
 
-    _loadData().then((_) {
-      if (mounted) {
-        // Auto-focus on the first field (Wallet selection) when data loads
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _walletFocusNode.requestFocus();
-        });
+    _nominalFocusNode.addListener(() {
+      if (_nominalFocusNode.hasFocus) {
+        _nominalController.selection = TextSelection(
+          baseOffset: 0,
+          extentOffset: _nominalController.text.length,
+        );
       }
     });
+
+    _adminUserFocusNode.addListener(() {
+      if (_adminUserFocusNode.hasFocus) {
+        _adminUserController.selection = TextSelection(
+          baseOffset: 0,
+          extentOffset: _adminUserController.text.length,
+        );
+      }
+    });
+
+    _typeController.text = _selectedType;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _walletFocusNode.requestFocus();
+    });
+
+    _loadData();
 
     // Load transactions for current date via provider
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -91,10 +112,14 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _nominalController.dispose();
     _adminBankController.dispose();
     _adminUserController.dispose();
     _customerNameController.dispose();
+    _typeController.dispose();
+    _walletController.dispose();
+    _serviceController.dispose();
     _typeFocusNode.dispose();
     _walletFocusNode.dispose();
     _serviceFocusNode.dispose();
@@ -117,6 +142,7 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
         // Auto-select first service if available
         if (_services.isNotEmpty && _selectedService == null) {
           _selectedService = _services.first;
+          _serviceController.text = _selectedService!.name;
           _adminBankController.text = _selectedService!.adminBank
               .toStringAsFixed(0);
         }
@@ -129,22 +155,27 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
   void _onServiceChanged(Service? service) {
     setState(() {
       _selectedService = service;
+      _serviceController.text = service?.name ?? '';
       _adminBankController.text = service?.adminBank.toStringAsFixed(0) ?? '';
       _calculateProfit();
     });
   }
 
-  void _onNominalChanged(String value) async {
-    final nominal = parseFormattedNumber(value);
-    // Auto-lookup admin user dari price_configs berdasarkan tipe transaksi
-    final db = ref.read(databaseProvider);
-    final adminUser = await db.getAdminUserForAmount(nominal, _selectedType);
-    if (mounted) {
-      setState(() {
-        _adminUserController.text = adminUser.toStringAsFixed(0);
-        _calculateProfit();
-      });
-    }
+  void _onNominalChanged(String value) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () async {
+      if (!mounted) return;
+      final nominal = parseFormattedNumber(value);
+      // Auto-lookup admin user dari price_configs berdasarkan tipe transaksi
+      final db = ref.read(databaseProvider);
+      final adminUser = await db.getAdminUserForAmount(nominal, _selectedType);
+      if (mounted) {
+        setState(() {
+          _adminUserController.text = adminUser.toStringAsFixed(0);
+          _calculateProfit();
+        });
+      }
+    });
   }
 
   void _calculateProfit() {
@@ -247,19 +278,37 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
         _selectedWalletId!,
         nominal,
         adminBank,
+        editingId: _editingTxnId,
       );
+      if (!mounted) return;
       if (!isValid) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Saldo Digital (Bank) tidak mencukupi!'),
-              backgroundColor: AppTheme.accentRed,
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Saldo Digital (Bank) tidak mencukupi!'),
+            backgroundColor: AppTheme.accentRed,
+          ),
+        );
+        return;
+      }
+    } else if (_selectedType == 'Tarik Tunai') {
+      final isValidTunai = await notifier.validateBalanceForTarikTunai(
+        nominal,
+        adminUser,
+        editingId: _editingTxnId,
+      );
+      if (!mounted) return;
+      if (!isValidTunai) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Saldo Laci (Tunai) tidak mencukupi!'),
+            backgroundColor: AppTheme.accentRed,
+          ),
+        );
         return;
       }
     }
+
+    if (!mounted) return;
 
     if (_selectedWalletId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -271,31 +320,56 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
       return;
     }
 
-    await notifier.submitTransaction(
-      editingId: _editingTxnId,
-      type: _selectedType,
-      walletId: _selectedWalletId!,
-      nominal: nominal,
-      adminBank: adminBank,
-      adminUser: adminUser,
-      profit: _profit,
-      isPiutang: _isPiutang,
-      customerName: _customerNameController.text,
-      date: DateTime.now(),
+    final selectedDate = ref.read(appDateProvider);
+    final now = DateTime.now();
+    // Gunakan tanggal yang dipilih, tapi dengan jam dan menit saat ini
+    final finalDate = DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+      now.hour,
+      now.minute,
+      now.second,
     );
 
-    _resetForm();
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Transaksi $_selectedType berhasil disimpan!'),
-          backgroundColor: AppTheme.accentGreen,
-          behavior: SnackBarBehavior.floating,
-        ),
+    try {
+      await notifier.submitTransaction(
+        editingId: _editingTxnId,
+        type: _selectedType,
+        walletId: _selectedWalletId!,
+        nominal: nominal,
+        adminBank: adminBank,
+        adminUser: adminUser,
+        profit: _profit,
+        isPiutang: _isPiutang,
+        customerName: _customerNameController.text,
+        date: finalDate,
       );
-      // Return focus to the first field
-      _walletFocusNode.requestFocus();
+
+      _resetForm();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Transaksi $_selectedType berhasil disimpan!'),
+            backgroundColor: AppTheme.accentGreen,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        // Return focus to the first field
+        _walletFocusNode.requestFocus();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menyimpan transaksi: $e'),
+            backgroundColor: AppTheme.accentRed,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 8),
+          ),
+        );
+      }
     }
   }
 
@@ -497,66 +571,77 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Header ──
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
+              // ── Scrollable top section (Header + Balance + Form) ──
+              Flexible(
+                flex: 0,
+                child: SingleChildScrollView(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        _editingTxnId != null
-                            ? 'Edit Transaksi'
-                            : 'Transaksi Baru',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                          color: _editingTxnId != null
-                              ? AppTheme.accentOrange
-                              : Colors.white,
-                        ),
+                      // ── Header ──
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _editingTxnId != null
+                                    ? 'Edit Transaksi'
+                                    : 'Transaksi Baru',
+                                style: TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.5,
+                                  color: _editingTxnId != null
+                                      ? AppTheme.accentOrange
+                                      : Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _editingTxnId != null
+                                    ? 'Perbarui data transaksi yang sudah tersimpan'
+                                    : 'Catat transaksi Transfer atau Tarik Tunai',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (_editingTxnId != null)
+                            TextButton.icon(
+                              icon: const Icon(Icons.close_rounded, size: 18),
+                              label: const Text('Batal Edit'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppTheme.accentRed,
+                              ),
+                              onPressed: _resetForm,
+                            ),
+                        ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _editingTxnId != null
-                            ? 'Perbarui data transaksi yang sudah tersimpan'
-                            : 'Catat transaksi Transfer atau Tarik Tunai',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppTheme.textSecondary,
+                      const SizedBox(height: 16),
+
+                      // ── Balance Cards ──
+                      const BalanceStrip(),
+                      const SizedBox(height: 16),
+
+                      // ── Form Section ──
+                      Container(
+                        padding: const EdgeInsets.all(24.0),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppTheme.dividerColor.withValues(alpha: 0.5),
+                          ),
                         ),
+                        child: _buildCompactForm(),
                       ),
                     ],
                   ),
-                  if (_editingTxnId != null)
-                    TextButton.icon(
-                      icon: const Icon(Icons.close_rounded, size: 18),
-                      label: const Text('Batal Edit'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppTheme.accentRed,
-                      ),
-                      onPressed: _resetForm,
-                    ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // ── Balance Cards ──
-              const BalanceStrip(),
-              const SizedBox(height: 16),
-
-              // ── Form Section ──
-              Container(
-                padding: const EdgeInsets.all(24.0),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: AppTheme.dividerColor.withOpacity(0.5),
-                  ),
                 ),
-                child: _buildCompactForm(),
               ),
 
               const SizedBox(height: 16),
@@ -584,15 +669,121 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
               ),
               const SizedBox(height: 12),
               Expanded(
-                child: (txnState.isLoading || _isLoading)
-                    ? const Center(child: CircularProgressIndicator())
-                    : transactions.isEmpty
-                    ? _buildEmptyState()
-                    : ListView.builder(
-                        itemCount: transactions.length,
-                        itemBuilder: (context, index) =>
-                            _buildTransactionTile(transactions[index]),
+                child: Column(
+                  children: [
+                    if (!txnState.isLoading &&
+                        !_isLoading &&
+                        transactions.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.accent.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const SizedBox(
+                              width: 45,
+                              child: Text(
+                                'WAKTU',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ),
+                            const Expanded(
+                              flex: 2,
+                              child: Text(
+                                'BANK',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ),
+                            const Expanded(
+                              flex: 2,
+                              child: Text(
+                                'TIPE',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ),
+                            const Expanded(
+                              flex: 3,
+                              child: Text(
+                                'NOMINAL',
+                                textAlign: TextAlign.right,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ),
+                            const Expanded(
+                              flex: 2,
+                              child: Text(
+                                'ADM B',
+                                textAlign: TextAlign.right,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ),
+                            const Expanded(
+                              flex: 2,
+                              child: Text(
+                                'ADM P',
+                                textAlign: TextAlign.right,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ),
+                            const Expanded(
+                              flex: 2,
+                              child: Text(
+                                'PROFIT',
+                                textAlign: TextAlign.right,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 54),
+                          ],
+                        ),
                       ),
+                    Expanded(
+                      child: (txnState.isLoading || _isLoading)
+                          ? const Center(child: CircularProgressIndicator())
+                          : transactions.isEmpty
+                          ? _buildEmptyState()
+                          : ListView.builder(
+                              itemCount: transactions.length,
+                              itemBuilder: (context, index) =>
+                                  _buildTransactionTile(transactions[index]),
+                            ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -604,79 +795,127 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
   Widget _buildCompactForm() {
     return Form(
       key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(flex: 3, child: _buildWalletDropdown()),
-              const SizedBox(width: 12),
-              Expanded(flex: 3, child: _buildTypeDropdown()),
-              const SizedBox(width: 12),
-              Expanded(flex: 4, child: _buildServiceDropdown()),
-              const SizedBox(width: 12),
-              Expanded(flex: 4, child: _buildNominalField()),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: _buildAdminBankField()),
-              const SizedBox(width: 16),
-              Expanded(child: _buildAdminUserField()),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Row(
-                  children: [
-                    if (_selectedType == 'Tarik Tunai') ...[
-                      Expanded(child: _buildAdminDalamSwitch()),
-                      const SizedBox(width: 8),
-                    ],
-                    Expanded(child: _buildPiutangSwitch()),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          if (_isPiutang) ...[
+      child: FocusTraversalGroup(
+        policy: OrderedTraversalPolicy(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(flex: 2, child: _buildCustomerNameField()),
-                const SizedBox(width: 16),
-                Expanded(flex: 1, child: _buildCashInstruction()),
+                Expanded(
+                  flex: 3,
+                  child: FocusTraversalOrder(
+                    order: const NumericFocusOrder(1),
+                    child: _buildWalletDropdown(),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 3,
+                  child: FocusTraversalOrder(
+                    order: const NumericFocusOrder(2),
+                    child: _buildTypeDropdown(),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 4,
+                  child: FocusTraversalOrder(
+                    order: const NumericFocusOrder(3),
+                    child: _buildServiceDropdown(),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 4,
+                  child: FocusTraversalOrder(
+                    order: const NumericFocusOrder(4),
+                    child: _buildNominalField(),
+                  ),
+                ),
               ],
             ),
-          ] else ...[
-            _buildCashInstruction(),
-          ],
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            height: 44,
-            child: ElevatedButton.icon(
-              onPressed: _confirmSubmission,
-              icon: Icon(
-                _editingTxnId != null
-                    ? Icons.save_as_rounded
-                    : Icons.save_rounded,
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _buildAdminBankField()),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: FocusTraversalOrder(
+                    order: const NumericFocusOrder(5),
+                    child: _buildAdminUserField(),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Row(
+                    children: [
+                      if (_selectedType == 'Tarik Tunai') ...[
+                        Expanded(
+                          child: FocusTraversalOrder(
+                            order: const NumericFocusOrder(6),
+                            child: _buildAdminDalamSwitch(),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Expanded(
+                        child: FocusTraversalOrder(
+                          order: const NumericFocusOrder(7),
+                          child: _buildPiutangSwitch(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (_isPiutang) ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: FocusTraversalOrder(
+                      order: const NumericFocusOrder(8),
+                      child: _buildCustomerNameField(),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(flex: 1, child: _buildCashInstruction()),
+                ],
               ),
-              label: Text(
-                _editingTxnId != null
-                    ? 'Simpan Perubahan (Enter)'
-                    : 'Simpan Transaksi (Enter)',
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _editingTxnId != null
-                    ? AppTheme.accentOrange
-                    : AppTheme.primaryMid,
+            ] else ...[
+              _buildCashInstruction(),
+            ],
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: ElevatedButton.icon(
+                onPressed: _confirmSubmission,
+                icon: Icon(
+                  _editingTxnId != null
+                      ? Icons.save_as_rounded
+                      : Icons.save_rounded,
+                ),
+                label: Text(
+                  _editingTxnId != null
+                      ? 'Simpan Perubahan (Enter)'
+                      : 'Simpan Transaksi (Enter)',
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _editingTxnId != null
+                      ? AppTheme.accentOrange
+                      : AppTheme.primaryMid,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -687,112 +926,120 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
       children: [
         _buildLabel('Jenis Transaksi'),
         const SizedBox(height: 6),
-        Focus(
-          focusNode: _typeFocusNode,
-          onKeyEvent: (node, event) {
-            // Tangkap event saat tombol ditekan (KeyDown atau ditahan)
-            if (event is KeyDownEvent || event is KeyRepeatEvent) {
-              // 1. Logika Navigasi Pilihan (Arrows)
-              if (event.logicalKey == LogicalKeyboardKey.arrowRight ||
-                  event.logicalKey == LogicalKeyboardKey.arrowDown) {
-                if (_selectedType != 'Tarik Tunai') {
-                  setState(() {
-                    _selectedType = 'Tarik Tunai';
-                    _isAdminDalam = false;
-                    _isPiutang = false;
-                  });
-                  if (_nominalController.text.isNotEmpty) {
-                    _onNominalChanged(_nominalController.text);
-                  }
-                }
-                return KeyEventResult.handled;
-              } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft ||
-                  event.logicalKey == LogicalKeyboardKey.arrowUp) {
-                if (_selectedType != 'Transfer') {
-                  setState(() {
-                    _selectedType = 'Transfer';
-                    _isAdminDalam = false;
-                    _isPiutang = false;
-                  });
-                  if (_nominalController.text.isNotEmpty) {
-                    _onNominalChanged(_nominalController.text);
-                  }
-                }
-                return KeyEventResult.handled;
-              }
-              // 2. Logika Lompatan Cerdas (Tab)
-              else if (event.logicalKey == LogicalKeyboardKey.tab) {
-                if (_selectedType == 'Transfer') {
-                  _serviceFocusNode.requestFocus();
-                } else {
-                  _nominalFocusNode.requestFocus();
-                }
-                return KeyEventResult.handled; // Hentikan Tab bawaan sistem
-              }
-            }
-            return KeyEventResult.ignored;
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: _typeFocusNode.hasFocus
-                    ? AppTheme.accent
-                    : AppTheme.dividerColor,
-                width: _typeFocusNode.hasFocus ? 2 : 1,
-              ),
-              borderRadius: BorderRadius.circular(8),
-              color: Theme.of(context).colorScheme.surface,
-            ),
-            // Matikan focus bawaan Dropdown agar di-handle oleh Focus Widget di atas
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                focusNode: FocusNode(canRequestFocus: false),
-                value: _selectedType,
-                isExpanded: true,
-                dropdownColor: Theme.of(context).colorScheme.surface,
-                items: ['Transfer', 'Tarik Tunai'].map((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(
-                      value,
-                      style: TextStyle(
-                        color: value == 'Transfer'
-                            ? AppTheme.accent
-                            : AppTheme.accentOrange,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  // Fallback jika user terpaksa menggunakan mouse
-                  if (newValue != null && newValue != _selectedType) {
+        Builder(
+          builder: (context) {
+            _typeFocusNode.onKeyEvent = (node, event) {
+              if (event is KeyDownEvent || event is KeyRepeatEvent) {
+                if (event.logicalKey == LogicalKeyboardKey.arrowRight ||
+                    event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                  Actions.maybeInvoke(context, const ActivateIntent());
+                  if (_selectedType != 'Tarik Tunai') {
                     setState(() {
-                      _selectedType = newValue;
+                      _selectedType = 'Tarik Tunai';
+                      _typeController.text = _selectedType;
                       _isAdminDalam = false;
                       _isPiutang = false;
                     });
-
-                    // Trigger recalculation of admin user when type changes
                     if (_nominalController.text.isNotEmpty) {
                       _onNominalChanged(_nominalController.text);
                     }
-
-                    Future.microtask(() {
-                      if (!mounted) return;
-                      if (_selectedType == 'Transfer') {
-                        _serviceFocusNode.requestFocus();
-                      } else {
-                        _nominalFocusNode.requestFocus();
-                      }
-                    });
                   }
-                },
+                  return KeyEventResult.handled;
+                } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft ||
+                    event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                  Actions.maybeInvoke(context, const ActivateIntent());
+                  if (_selectedType != 'Transfer') {
+                    setState(() {
+                      _selectedType = 'Transfer';
+                      _typeController.text = _selectedType;
+                      _isAdminDalam = false;
+                      _isPiutang = false;
+                    });
+                    if (_nominalController.text.isNotEmpty) {
+                      _onNominalChanged(_nominalController.text);
+                    }
+                  }
+                  return KeyEventResult.handled;
+                }
+              }
+              return KeyEventResult.ignored;
+            };
+            return DropdownMenu<String>(
+              controller: _typeController,
+              focusNode: _typeFocusNode,
+              requestFocusOnTap: true,
+              enableSearch: false,
+              initialSelection: _selectedType,
+              expandedInsets: EdgeInsets.zero,
+              trailingIcon: const ExcludeFocus(
+                child: Icon(Icons.arrow_drop_down_rounded),
               ),
-            ),
-          ),
+              inputDecorationTheme: InputDecorationTheme(
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surface,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppTheme.dividerColor),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppTheme.dividerColor),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(
+                    color: AppTheme.accent,
+                    width: 2,
+                  ),
+                ),
+              ),
+              textStyle: TextStyle(
+                color: _selectedType == 'Transfer'
+                    ? AppTheme.accent
+                    : AppTheme.accentOrange,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+              dropdownMenuEntries: ['Transfer', 'Tarik Tunai'].map((
+                String value,
+              ) {
+                return DropdownMenuEntry<String>(
+                  value: value,
+                  label: value,
+                  style: MenuItemButton.styleFrom(
+                    foregroundColor: value == 'Transfer'
+                        ? AppTheme.accent
+                        : AppTheme.accentOrange,
+                    textStyle: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                );
+              }).toList(),
+              onSelected: (String? newValue) {
+                if (newValue != null && newValue != _selectedType) {
+                  setState(() {
+                    _selectedType = newValue;
+                    _isAdminDalam = false;
+                    _isPiutang = false;
+                  });
+                  if (_nominalController.text.isNotEmpty) {
+                    _onNominalChanged(_nominalController.text);
+                  }
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    if (_selectedType == 'Transfer') {
+                      _serviceFocusNode.requestFocus();
+                    } else {
+                      _nominalFocusNode.requestFocus();
+                    }
+                  });
+                }
+              },
+            );
+          },
         ),
       ],
     );
@@ -802,10 +1049,14 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
     final dashboard = ref.watch(dashboardProvider);
     final banks = dashboard.digitalWallets;
 
-    // Auto-select if null
     if (_selectedWalletId == null && banks.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _selectedWalletId = banks.first.id);
+        if (mounted) {
+          setState(() {
+            _selectedWalletId = banks.first.id;
+            _walletController.text = banks.first.name;
+          });
+        }
       });
     }
 
@@ -814,61 +1065,101 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
       children: [
         _buildLabel('Pilih Bank'),
         const SizedBox(height: 6),
-        Focus(
-          focusNode: _walletFocusNode,
-          onKeyEvent: (node, event) {
-            if (event.logicalKey == LogicalKeyboardKey.tab &&
-                (event is KeyDownEvent || event is KeyRepeatEvent)) {
-              _typeFocusNode.requestFocus();
-              return KeyEventResult.handled;
-            }
-            return KeyEventResult.ignored;
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: _walletFocusNode.hasFocus
-                    ? AppTheme.accent
-                    : AppTheme.dividerColor,
-                width: _walletFocusNode.hasFocus ? 2 : 1,
-              ),
-              borderRadius: BorderRadius.circular(8),
-              color: Theme.of(context).colorScheme.surface,
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<int>(
-                focusNode: FocusNode(canRequestFocus: false),
-                value: _selectedWalletId,
-                isExpanded: true,
-                dropdownColor: Theme.of(context).colorScheme.surface,
-                items: banks.map((w) {
-                  return DropdownMenuItem<int>(
-                    value: w.id,
-                    child: Text(
-                      w.name,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  );
-                }).toList(),
-                onChanged: (int? newValue) {
-                  if (newValue != null) {
-                    setState(() => _selectedWalletId = newValue);
-                    Future.microtask(() {
-                      if (!mounted) return;
-                      _typeFocusNode.requestFocus();
-                    });
+        Builder(
+          builder: (context) {
+            _walletFocusNode.onKeyEvent = (node, event) {
+              if (event is KeyDownEvent || event is KeyRepeatEvent) {
+                if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                  Actions.maybeInvoke(context, const ActivateIntent());
+                  if (banks.isNotEmpty) {
+                    int currentIndex = banks.indexWhere(
+                      (w) => w.id == _selectedWalletId,
+                    );
+                    if (currentIndex < banks.length - 1) {
+                      setState(() {
+                        _selectedWalletId = banks[currentIndex + 1].id;
+                        _walletController.text = banks[currentIndex + 1].name;
+                      });
+                    }
                   }
-                },
+                  return KeyEventResult.handled;
+                } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                  Actions.maybeInvoke(context, const ActivateIntent());
+                  if (banks.isNotEmpty) {
+                    int currentIndex = banks.indexWhere(
+                      (w) => w.id == _selectedWalletId,
+                    );
+                    if (currentIndex > 0) {
+                      setState(() {
+                        _selectedWalletId = banks[currentIndex - 1].id;
+                        _walletController.text = banks[currentIndex - 1].name;
+                      });
+                    }
+                  }
+                  return KeyEventResult.handled;
+                }
+              }
+              return KeyEventResult.ignored;
+            };
+            return DropdownMenu<int>(
+              controller: _walletController,
+              focusNode: _walletFocusNode,
+              requestFocusOnTap: true,
+              enableSearch: false,
+              initialSelection: _selectedWalletId,
+              expandedInsets: EdgeInsets.zero,
+              trailingIcon: const ExcludeFocus(
+                child: Icon(Icons.arrow_drop_down_rounded),
               ),
-            ),
-          ),
+              inputDecorationTheme: InputDecorationTheme(
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surface,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppTheme.dividerColor),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppTheme.dividerColor),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(
+                    color: AppTheme.accent,
+                    width: 2,
+                  ),
+                ),
+              ),
+              textStyle: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+              dropdownMenuEntries: banks.map((w) {
+                return DropdownMenuEntry<int>(
+                  value: w.id,
+                  label: w.name,
+                  style: MenuItemButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    textStyle: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                );
+              }).toList(),
+              onSelected: (int? newValue) {
+                if (newValue != null) {
+                  setState(() => _selectedWalletId = newValue);
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    _typeFocusNode.requestFocus();
+                  });
+                }
+              },
+            );
+          },
         ),
       ],
     );
@@ -880,129 +1171,112 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
       children: [
         _buildLabel('Layanan'),
         const SizedBox(height: 6),
-        Focus(
-          focusNode: _selectedType == 'Tarik Tunai' ? null : _serviceFocusNode,
-          canRequestFocus: _selectedType != 'Tarik Tunai',
-          skipTraversal: _selectedType == 'Tarik Tunai',
-          onKeyEvent: (node, event) {
-            if (_selectedType == 'Tarik Tunai') {
-              if (event.logicalKey == LogicalKeyboardKey.arrowLeft &&
-                  (event is KeyDownEvent || event is KeyRepeatEvent)) {
-                setState(() {
-                  _selectedType = 'Transfer';
-                  _isAdminDalam = false;
-                });
-                return KeyEventResult.handled;
-              }
-              return KeyEventResult.ignored;
-            }
+        Builder(
+          builder: (context) {
+            _serviceFocusNode.onKeyEvent = (node, event) {
+              if (_selectedType == 'Tarik Tunai') return KeyEventResult.ignored;
 
-            if (event.logicalKey == LogicalKeyboardKey.arrowDown ||
-                event.logicalKey == LogicalKeyboardKey.arrowUp ||
-                event.logicalKey == LogicalKeyboardKey.arrowLeft ||
-                event.logicalKey == LogicalKeyboardKey.arrowRight) {
               if (event is KeyDownEvent || event is KeyRepeatEvent) {
                 if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-                  if (_services.isNotEmpty && _selectedService != null) {
-                    int currentIndex = _services.indexOf(_selectedService!);
+                  Actions.maybeInvoke(context, const ActivateIntent());
+                  if (_services.isNotEmpty) {
+                    int currentIndex = _selectedService == null
+                        ? -1
+                        : _services.indexWhere(
+                            (s) => s.id == _selectedService!.id,
+                          );
                     if (currentIndex < _services.length - 1) {
                       _onServiceChanged(_services[currentIndex + 1]);
                     }
                   }
+                  return KeyEventResult.handled;
                 } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-                  if (_services.isNotEmpty && _selectedService != null) {
-                    int currentIndex = _services.indexOf(_selectedService!);
+                  Actions.maybeInvoke(context, const ActivateIntent());
+                  if (_services.isNotEmpty) {
+                    int currentIndex = _selectedService == null
+                        ? -1
+                        : _services.indexWhere(
+                            (s) => s.id == _selectedService!.id,
+                          );
                     if (currentIndex > 0) {
                       _onServiceChanged(_services[currentIndex - 1]);
                     }
                   }
-                } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-                  setState(() {
-                    _selectedType = 'Tarik Tunai';
-                    _isAdminDalam = false;
-                  });
-                  if (_nominalController.text.isNotEmpty) {
-                    _onNominalChanged(_nominalController.text);
-                  }
-                } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-                  setState(() {
-                    _selectedType = 'Transfer';
-                    _isAdminDalam = false;
-                  });
-                  if (_nominalController.text.isNotEmpty) {
-                    _onNominalChanged(_nominalController.text);
-                  }
+                  return KeyEventResult.handled;
                 }
               }
-              return KeyEventResult.handled;
-            } else if (event.logicalKey == LogicalKeyboardKey.tab) {
-              if (event is KeyDownEvent) {
-                _nominalFocusNode.requestFocus();
-                return KeyEventResult.handled;
-              }
-            }
-            return KeyEventResult.ignored;
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-            decoration: BoxDecoration(
-              border: Border.all(
-                color:
-                    (_selectedType != 'Tarik Tunai' &&
-                        _serviceFocusNode.hasFocus)
-                    ? AppTheme.accent
-                    : AppTheme.dividerColor,
-                width:
-                    (_selectedType != 'Tarik Tunai' &&
-                        _serviceFocusNode.hasFocus)
-                    ? 2
-                    : 1,
+              return KeyEventResult.ignored;
+            };
+            return DropdownMenu<Service>(
+              controller: _serviceController,
+              focusNode: _serviceFocusNode,
+              requestFocusOnTap: true,
+              enableSearch: false,
+              enabled: _selectedType != 'Tarik Tunai',
+              initialSelection: _selectedType == 'Tarik Tunai'
+                  ? null
+                  : _selectedService,
+              expandedInsets: EdgeInsets.zero,
+              trailingIcon: const ExcludeFocus(
+                child: Icon(Icons.arrow_drop_down_rounded),
               ),
-              borderRadius: BorderRadius.circular(8),
-              color: _selectedType == 'Tarik Tunai'
-                  ? Theme.of(context).colorScheme.surface.withAlpha(128)
-                  : Theme.of(context).colorScheme.surface,
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<Service>(
-                focusNode: FocusNode(canRequestFocus: false),
-                value: _selectedType == 'Tarik Tunai' ? null : _selectedService,
-                isExpanded: true,
-                style: const TextStyle(fontSize: 14),
-                hint: Text(
-                  _selectedType == 'Tarik Tunai'
-                      ? 'Tidak perlu pilih layanan'
-                      : 'Pilih layanan...',
-                  style: TextStyle(
-                    color: _selectedType == 'Tarik Tunai'
-                        ? Colors.white30
-                        : null,
-                    fontSize: 14,
+              inputDecorationTheme: InputDecorationTheme(
+                filled: true,
+                fillColor: _selectedType == 'Tarik Tunai'
+                    ? Theme.of(
+                        context,
+                      ).colorScheme.surface.withValues(alpha: 0.5)
+                    : Theme.of(context).colorScheme.surface,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppTheme.dividerColor),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppTheme.dividerColor),
+                ),
+                disabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: AppTheme.dividerColor.withValues(alpha: 0.5),
                   ),
                 ),
-                dropdownColor: Theme.of(context).colorScheme.surface,
-                items: _selectedType == 'Tarik Tunai'
-                    ? []
-                    : _services.map((s) {
-                        return DropdownMenuItem(
-                          value: s,
-                          child: Text(
-                            s.name,
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        );
-                      }).toList(),
-                onChanged: _selectedType == 'Tarik Tunai'
-                    ? null
-                    : (Service? newValue) {
-                        _onServiceChanged(newValue);
-                        Future.microtask(() {
-                          if (mounted) _nominalFocusNode.requestFocus();
-                        });
-                      },
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(
+                    color: AppTheme.accent,
+                    width: 2,
+                  ),
+                ),
               ),
-            ),
-          ),
+              textStyle: TextStyle(
+                color: _selectedType == 'Tarik Tunai'
+                    ? Colors.white30
+                    : Colors.white,
+                fontSize: 14,
+              ),
+              dropdownMenuEntries: _selectedType == 'Tarik Tunai'
+                  ? []
+                  : _services.map((s) {
+                      return DropdownMenuEntry<Service>(
+                        value: s,
+                        label: s.name,
+                        style: MenuItemButton.styleFrom(
+                          foregroundColor: Colors.white,
+                        ),
+                      );
+                    }).toList(),
+              onSelected: _selectedType == 'Tarik Tunai'
+                  ? null
+                  : (Service? newValue) {
+                      _onServiceChanged(newValue);
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) _nominalFocusNode.requestFocus();
+                      });
+                    },
+            );
+          },
         ),
       ],
     );
@@ -1141,7 +1415,7 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
               Switch(
                 focusNode: _adminDalamFocusNode,
                 value: _isAdminDalam,
-                activeColor: AppTheme.primaryLight,
+                activeThumbColor: AppTheme.primaryLight,
                 onChanged: (v) => setState(() => _isAdminDalam = v),
               ),
             ],
@@ -1199,7 +1473,7 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
                       ? null
                       : _piutangFocusNode,
                   value: _isPiutang,
-                  activeColor: AppTheme.accentOrange,
+                  activeThumbColor: AppTheme.accentOrange,
                   onChanged: _selectedType == 'Tarik Tunai'
                       ? null
                       : (v) {
@@ -1261,79 +1535,138 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
   }
 
   Widget _buildTransactionTile(Transaction txn) {
+    final dashboard = ref.watch(dashboardProvider);
+    final matchedWallet = dashboard.digitalWallets.where(
+      (w) => w.id == txn.walletId,
+    );
+    final bankName = matchedWallet.isNotEmpty
+        ? matchedWallet.first.name
+        : (dashboard.digitalWallets.isNotEmpty
+              ? dashboard.digitalWallets.first.name
+              : 'Unknown');
     final isTransfer = txn.type == 'Transfer';
+    final timeStr = DateFormat('HH:mm').format(txn.createdAt);
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppTheme.dividerColor.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: (isTransfer ? AppTheme.accent : AppTheme.accentOrange)
-                  .withOpacity(0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              isTransfer ? Icons.send_rounded : Icons.money_rounded,
-              color: isTransfer ? AppTheme.accent : AppTheme.accentOrange,
-              size: 18,
+          // 1. WAKTU
+          SizedBox(
+            width: 45,
+            child: Text(
+              timeStr,
+              style: TextStyle(
+                fontSize: 12,
+                color: AppTheme.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
-          const SizedBox(width: 12),
+          // 2. BANK
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            flex: 2,
+            child: Text(
+              bankName,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          // 3. TIPE
+          Expanded(
+            flex: 2,
+            child: Row(
               children: [
+                Icon(
+                  isTransfer ? Icons.send_rounded : Icons.money_rounded,
+                  size: 14,
+                  color: isTransfer ? AppTheme.accent : AppTheme.accentOrange,
+                ),
+                const SizedBox(width: 4),
                 Text(
                   txn.type,
-                  style: const TextStyle(
-                    fontSize: 13,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isTransfer ? AppTheme.accent : AppTheme.accentOrange,
                     fontWeight: FontWeight.w600,
                   ),
-                ),
-                Text(
-                  _currencyFormat.format(txn.amount),
-                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                 ),
               ],
             ),
           ),
-          Text(
-            '+${_currencyFormat.format(txn.profit)}',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.accentGreen,
+          // 4. NOMINAL
+          Expanded(
+            flex: 3,
+            child: Text(
+              _currencyFormat.format(txn.amount),
+              textAlign: TextAlign.right,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             ),
           ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(
-              Icons.edit_rounded,
-              size: 18,
-              color: AppTheme.accent,
+          // 5. ADMIN BANK
+          Expanded(
+            flex: 2,
+            child: Text(
+              _currencyFormat.format(txn.adminBank),
+              textAlign: TextAlign.right,
+              style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
             ),
-            tooltip: 'Edit',
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            onPressed: () => _editTransaction(txn),
           ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(
-              Icons.delete_rounded,
-              size: 18,
-              color: AppTheme.accentRed,
+          // 6. ADMIN PELANGGAN
+          Expanded(
+            flex: 2,
+            child: Text(
+              _currencyFormat.format(txn.adminUser),
+              textAlign: TextAlign.right,
+              style: const TextStyle(fontSize: 11, color: Colors.white),
             ),
-            tooltip: 'Hapus',
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            onPressed: () => _deleteTransaction(txn),
+          ),
+          // 7. PROFIT
+          Expanded(
+            flex: 2,
+            child: Text(
+              _currencyFormat.format(txn.profit),
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.accentGreen,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // ACTIONS
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(
+                  Icons.edit_rounded,
+                  size: 16,
+                  color: AppTheme.accent,
+                ),
+                onPressed: () => _editTransaction(txn),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+              const SizedBox(width: 10),
+              IconButton(
+                icon: const Icon(
+                  Icons.delete_rounded,
+                  size: 16,
+                  color: AppTheme.accentRed,
+                ),
+                onPressed: () => _deleteTransaction(txn),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
           ),
         ],
       ),
@@ -1349,7 +1682,7 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
             Icon(
               Icons.inbox_rounded,
               size: 40,
-              color: AppTheme.textSecondary.withOpacity(0.3),
+              color: AppTheme.textSecondary.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 10),
             Text(

@@ -73,7 +73,7 @@ class AppToggle extends StatelessWidget {
             Switch(
               value: value,
               onChanged: onChanged,
-              activeColor: color,
+              activeThumbColor: color,
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
           ],

@@ -55,10 +55,34 @@ class TransactionNotifier extends StateNotifier<TransactionState> {
   Future<bool> validateBalanceForTransfer(
     int walletId,
     double nominal,
-    double adminBank,
-  ) async {
-    final digitalBalance = await db.getWalletBalance(walletId);
+    double adminBank, {
+    int? editingId,
+  }) async {
+    double digitalBalance = await db.getWalletBalance(walletId);
+    if (editingId != null) {
+      final oldTxn = await db.getTransactionById(editingId);
+      if (oldTxn != null &&
+          oldTxn.type == 'Transfer' &&
+          oldTxn.walletId == walletId) {
+        digitalBalance += (oldTxn.amount + oldTxn.adminBank);
+      }
+    }
     return digitalBalance >= (nominal + adminBank);
+  }
+
+  Future<bool> validateBalanceForTarikTunai(
+    double nominal,
+    double adminUser, {
+    int? editingId,
+  }) async {
+    double tunaiBalance = await db.getWalletBalance(2); // 2 is Tunai
+    if (editingId != null) {
+      final oldTxn = await db.getTransactionById(editingId);
+      if (oldTxn != null && oldTxn.type == 'Tarik Tunai') {
+        tunaiBalance += (oldTxn.amount - oldTxn.adminUser);
+      }
+    }
+    return tunaiBalance >= (nominal - adminUser);
   }
 
   Future<void> submitTransaction({
@@ -73,10 +97,50 @@ class TransactionNotifier extends StateNotifier<TransactionState> {
     required String customerName,
     required DateTime date,
   }) async {
+    int? currentReceivableId;
+
     if (editingId != null) {
       final oldTxn = await db.getTransactionById(editingId);
       if (oldTxn != null) {
+        currentReceivableId = oldTxn.receivableId;
         await deleteTransaction(oldTxn, isEditing: true);
+      }
+    }
+
+    if (isPiutang) {
+      if (currentReceivableId != null) {
+        // Update existing receivable instead of creating new
+        await db.customStatement(
+          'UPDATE receivables SET customer_name = ?, total_debt = ?, status = ? WHERE id = ?',
+          [
+            customerName,
+            nominal + adminUser,
+            'Belum Lunas',
+            currentReceivableId,
+          ],
+        );
+      } else {
+        currentReceivableId = await db.insertReceivable(
+          ReceivablesCompanion.insert(
+            customerName: customerName,
+            totalDebt: nominal + adminUser,
+            status: 'Belum Lunas',
+          ),
+        );
+      }
+    } else {
+      // Jika diedit menjadi BUKAN piutang, hapus piutang lamanya
+      if (currentReceivableId != null) {
+        await db.transaction(() async {
+          await db.customStatement(
+            'DELETE FROM receivable_logs WHERE receivable_id = ?',
+            [currentReceivableId],
+          );
+          await db.customStatement('DELETE FROM receivables WHERE id = ?', [
+            currentReceivableId,
+          ]);
+        });
+        currentReceivableId = null;
       }
     }
 
@@ -90,6 +154,7 @@ class TransactionNotifier extends StateNotifier<TransactionState> {
         profit: Value(profit),
         isPiutang: Value(isPiutang ? 1 : 0),
         customerName: Value(isPiutang ? customerName : null),
+        receivableId: Value(currentReceivableId),
         createdAt: date,
       ),
     );
@@ -105,16 +170,6 @@ class TransactionNotifier extends StateNotifier<TransactionState> {
         2,
         -(nominal - adminUser),
       ); // 2 is Tunai
-    }
-
-    if (isPiutang) {
-      await db.insertReceivable(
-        ReceivablesCompanion.insert(
-          customerName: customerName,
-          totalDebt: nominal + adminUser,
-          status: 'Belum Lunas',
-        ),
-      );
     }
 
     await loadTransactions(ref.read(appDateProvider));
@@ -149,6 +204,18 @@ class TransactionNotifier extends StateNotifier<TransactionState> {
         2,
         (txn.amount - txn.adminUser),
       ); // 2 is Tunai
+    }
+
+    if (txn.receivableId != null && !isEditing) {
+      await db.transaction(() async {
+        await db.customStatement(
+          'DELETE FROM receivable_logs WHERE receivable_id = ?',
+          [txn.receivableId],
+        );
+        await db.customStatement('DELETE FROM receivables WHERE id = ?', [
+          txn.receivableId,
+        ]);
+      });
     }
 
     await db.deleteTransaction(txn.id);

@@ -113,12 +113,12 @@ class _AdjustmentPageState extends ConsumerState<AdjustmentPage> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(title: const Text('Penyesuaian Saldo (F7)')),
+      appBar: AppBar(title: const Text('Penyesuaian Saldo')),
       body: Column(
         children: [
           // ── Balance Cards ──
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
             child: const BalanceStrip(),
           ),
           Expanded(
@@ -128,92 +128,70 @@ class _AdjustmentPageState extends ConsumerState<AdjustmentPage> {
                 // KIRI: FORM INPUT
                 Expanded(
                   flex: 4,
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Input Penyesuaian Saldo',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                  child: Container(
+                    margin: const EdgeInsets.fromLTRB(24, 24, 12, 24),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppTheme.dividerColor.withAlpha(128),
+                      ),
+                    ),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Input Penyesuaian Saldo',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 24),
+                            const SizedBox(height: 24),
 
-                          // Jenis Penyesuaian
-                          _buildLabel('Jenis Penyesuaian'),
-                          const SizedBox(height: 8),
-                          DropdownButtonFormField<String>(
-                            value: _selectedType,
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: Theme.of(context).cardColor,
-                            ),
-                            dropdownColor: Theme.of(context).cardColor,
-                            items:
-                                [
-                                      'Penambahan',
-                                      'Tarik Prive',
-                                      'Koreksi Minus',
-                                      'Pindah Saldo',
-                                    ]
-                                    .map(
-                                      (t) => DropdownMenuItem(
-                                        value: t,
-                                        child: Text(
-                                          t,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
-                            onChanged: (v) =>
-                                setState(() => _selectedType = v!),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Sumber Wallet
-                          _buildLabel(
-                            _selectedType == 'Pindah Saldo'
-                                ? 'Dari Dompet/Bank'
-                                : 'Pilih Saldo/Bank',
-                          ),
-                          const SizedBox(height: 8),
-                          if (allWallets.isNotEmpty)
-                            DropdownButtonFormField<int>(
-                              value: _sourceWalletId,
+                            // Jenis Penyesuaian
+                            _buildLabel('Jenis Penyesuaian'),
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<String>(
+                              value: _selectedType,
                               decoration: InputDecoration(
                                 filled: true,
                                 fillColor: Theme.of(context).cardColor,
                               ),
                               dropdownColor: Theme.of(context).cardColor,
-                              items: allWallets.map((w) {
-                                return DropdownMenuItem<int>(
-                                  value: w.id,
-                                  child: Text(
-                                    '${w.name} - ${_currencyFormat.format(w.balance)}',
-                                    style: const TextStyle(color: Colors.white),
-                                  ),
-                                );
-                              }).toList(),
+                              items:
+                                  [
+                                        'Penambahan',
+                                        'Tarik Prive',
+                                        'Koreksi Minus',
+                                        'Pindah Saldo',
+                                      ]
+                                      .map(
+                                        (t) => DropdownMenuItem(
+                                          value: t,
+                                          child: Text(t),
+                                        ),
+                                      )
+                                      .toList(),
                               onChanged: (v) =>
-                                  setState(() => _sourceWalletId = v),
+                                  setState(() => _selectedType = v!),
                             ),
-                          const SizedBox(height: 16),
+                            const SizedBox(height: 16),
 
-                          if (_selectedType == 'Pindah Saldo') ...[
-                            _buildLabel('Ke Dompet/Bank Tujuan'),
+                            // Sumber Wallet
+                            _buildLabel(
+                              _selectedType == 'Pindah Saldo'
+                                  ? 'Dari Dompet/Bank'
+                                  : 'Pilih Saldo/Bank',
+                            ),
                             const SizedBox(height: 8),
                             if (allWallets.isNotEmpty)
                               DropdownButtonFormField<int>(
-                                value: _targetWalletId,
+                                value: _sourceWalletId,
                                 decoration: InputDecoration(
                                   filled: true,
                                   fillColor: Theme.of(context).cardColor,
@@ -223,46 +201,43 @@ class _AdjustmentPageState extends ConsumerState<AdjustmentPage> {
                                   return DropdownMenuItem<int>(
                                     value: w.id,
                                     child: Text(
-                                      w.name,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                      ),
+                                      '${w.name} - ${_currencyFormat.format(w.balance)}',
                                     ),
                                   );
                                 }).toList(),
                                 onChanged: (v) =>
-                                    setState(() => _targetWalletId = v),
+                                    setState(() => _sourceWalletId = v),
                               ),
                             const SizedBox(height: 16),
-                          ],
 
-                          // Nominal
-                          _buildLabel('Nominal (Rp)'),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            controller: _amountController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [
-                              ThousandsSeparatorInputFormatter(),
+                            if (_selectedType == 'Pindah Saldo') ...[
+                              _buildLabel('Ke Dompet/Bank Tujuan'),
+                              const SizedBox(height: 8),
+                              if (allWallets.isNotEmpty)
+                                DropdownButtonFormField<int>(
+                                  value: _targetWalletId,
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: Theme.of(context).cardColor,
+                                  ),
+                                  dropdownColor: Theme.of(context).cardColor,
+                                  items: allWallets.map((w) {
+                                    return DropdownMenuItem<int>(
+                                      value: w.id,
+                                      child: Text(w.name),
+                                    );
+                                  }).toList(),
+                                  onChanged: (v) =>
+                                      setState(() => _targetWalletId = v),
+                                ),
+                              const SizedBox(height: 16),
                             ],
-                            decoration: const InputDecoration(
-                              hintText: '0',
-                              prefixText: 'Rp ',
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty)
-                                return 'Wajib diisi';
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
 
-                          // Biaya (only for Pindah Saldo)
-                          if (_selectedType == 'Pindah Saldo') ...[
-                            _buildLabel('Biaya Pindah Saldo (Rp)'),
+                            // Nominal
+                            _buildLabel('Nominal (Rp)'),
                             const SizedBox(height: 8),
                             TextFormField(
-                              controller: _feeController,
+                              controller: _amountController,
                               keyboardType: TextInputType.number,
                               inputFormatters: [
                                 ThousandsSeparatorInputFormatter(),
@@ -271,43 +246,66 @@ class _AdjustmentPageState extends ConsumerState<AdjustmentPage> {
                                 hintText: '0',
                                 prefixText: 'Rp ',
                               ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty)
+                                  return 'Wajib diisi';
+                                return null;
+                              },
                             ),
                             const SizedBox(height: 16),
-                          ],
 
-                          // Keterangan
-                          _buildLabel('Keterangan / Catatan'),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            controller: _descController,
-                            decoration: const InputDecoration(
-                              hintText:
-                                  'Contoh: Modal awal, tarik pribadi, dll',
+                            // Biaya (only for Pindah Saldo)
+                            if (_selectedType == 'Pindah Saldo') ...[
+                              _buildLabel('Biaya Pindah Saldo (Rp)'),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: _feeController,
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  ThousandsSeparatorInputFormatter(),
+                                ],
+                                decoration: const InputDecoration(
+                                  hintText: '0',
+                                  prefixText: 'Rp ',
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+
+                            // Keterangan
+                            _buildLabel('Keterangan / Catatan'),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _descController,
+                              decoration: const InputDecoration(
+                                hintText:
+                                    'Contoh: Modal awal, tarik pribadi, dll',
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty)
+                                  return 'Keterangan wajib diisi';
+                                return null;
+                              },
                             ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty)
-                                return 'Keterangan wajib diisi';
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 32),
+                            const SizedBox(height: 32),
 
-                          SizedBox(
-                            width: double.infinity,
-                            height: 48,
-                            child: ElevatedButton(
-                              onPressed: _submit,
-                              child: const Text(
-                                'Simpan Penyesuaian',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                            SizedBox(
+                              width: double.infinity,
+                              height: 48,
+                              child: ElevatedButton(
+                                onPressed: _submit,
+                                child: const Text(
+                                  'Simpan Penyesuaian',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -317,11 +315,13 @@ class _AdjustmentPageState extends ConsumerState<AdjustmentPage> {
                 Expanded(
                   flex: 6,
                   child: Container(
-                    margin: const EdgeInsets.all(24.0),
+                    margin: const EdgeInsets.fromLTRB(12, 24, 24, 24),
                     decoration: BoxDecoration(
                       color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppTheme.surfaceDark),
+                      border: Border.all(
+                        color: AppTheme.dividerColor.withAlpha(128),
+                      ),
                     ),
                     child: Column(
                       children: [
@@ -335,13 +335,15 @@ class _AdjustmentPageState extends ConsumerState<AdjustmentPage> {
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.white,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const Divider(color: AppTheme.surfaceDark, height: 1),
+                        Divider(
+                          color: AppTheme.dividerColor.withAlpha(128),
+                          height: 1,
+                        ),
                         Expanded(
                           child: state.isLoading
                               ? const Center(child: CircularProgressIndicator())
@@ -393,7 +395,9 @@ class _AdjustmentPageState extends ConsumerState<AdjustmentPage> {
                                     return Container(
                                       padding: const EdgeInsets.all(16),
                                       decoration: BoxDecoration(
-                                        color: AppTheme.surfaceDark,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.surface,
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Row(
@@ -435,7 +439,6 @@ class _AdjustmentPageState extends ConsumerState<AdjustmentPage> {
                                                   style: const TextStyle(
                                                     fontWeight: FontWeight.bold,
                                                     fontSize: 16,
-                                                    color: Colors.white,
                                                   ),
                                                 ),
                                                 const SizedBox(height: 4),

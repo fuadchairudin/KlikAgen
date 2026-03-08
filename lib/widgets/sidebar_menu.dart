@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../data/app_database.dart';
+
 import '../theme/app_theme.dart';
 
 class SidebarMenu extends StatefulWidget {
@@ -20,22 +20,7 @@ class SidebarMenu extends StatefulWidget {
 
 class _SidebarMenuState extends State<SidebarMenu> {
   bool _isCollapsed = false;
-  String _shopName = 'KlikAgen';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSettings();
-  }
-
-  Future<void> _loadSettings() async {
-    final name = await AppDatabase.instance.getSetting('shop_name');
-    if (mounted && name != null && name.isNotEmpty) {
-      setState(() {
-        _shopName = name;
-      });
-    }
-  }
+  final String _shopName = 'Klik Agen';
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +41,9 @@ class _SidebarMenuState extends State<SidebarMenu> {
         width: _isCollapsed ? 80 : 240,
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
-          border: Border.all(color: AppTheme.dividerColor.withOpacity(0.5)),
+          border: Border.all(
+            color: AppTheme.dividerColor.withValues(alpha: 0.5),
+          ),
         ),
         child: Column(
           children: [
@@ -141,7 +128,10 @@ class _SidebarMenuState extends State<SidebarMenu> {
               ),
             ),
 
-            Divider(color: AppTheme.dividerColor.withOpacity(0.5), height: 1),
+            Divider(
+              color: AppTheme.dividerColor.withValues(alpha: 0.5),
+              height: 1,
+            ),
 
             const SizedBox(height: 12),
 
@@ -159,7 +149,7 @@ class _SidebarMenuState extends State<SidebarMenu> {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
-                      color: AppTheme.textSecondary.withOpacity(0.5),
+                      color: AppTheme.textSecondary.withValues(alpha: 0.5),
                       letterSpacing: 1.5,
                     ),
                   ),
@@ -187,10 +177,10 @@ class _SidebarMenuState extends State<SidebarMenu> {
                 child: Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryMid.withOpacity(0.1),
+                    color: AppTheme.primaryMid.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: AppTheme.primaryMid.withOpacity(0.2),
+                      color: AppTheme.primaryMid.withValues(alpha: 0.2),
                     ),
                   ),
                   child: Row(
@@ -243,12 +233,12 @@ class _SidebarMenuState extends State<SidebarMenu> {
               ),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppTheme.primaryMid.withOpacity(0.15)
+                    ? AppTheme.primaryMid.withValues(alpha: 0.15)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: isSelected
-                      ? AppTheme.primaryMid.withOpacity(0.3)
+                      ? AppTheme.primaryMid.withValues(alpha: 0.3)
                       : Colors.transparent,
                 ),
               ),

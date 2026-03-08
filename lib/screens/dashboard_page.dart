@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../data/app_database.dart';
 import '../theme/app_theme.dart';
 import '../widgets/molecules/stat_card.dart';
 
@@ -87,7 +86,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppTheme.accentRed.withOpacity(0.1),
+                  color: AppTheme.accentRed.withValues(alpha: 0.1),
                   border: Border.all(color: AppTheme.accentRed),
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -134,6 +133,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                               .loadAdjustments();
                           ref.read(reportProvider.notifier).loadReport();
                         } catch (e) {
+                          if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text('Gagal reset: $e')),
                           );
@@ -158,7 +158,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.primaryMid.withOpacity(0.3),
+                      color: AppTheme.primaryMid.withValues(alpha: 0.3),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -169,7 +169,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        color: Colors.white.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -186,7 +186,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           'Total Aset',
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha: 0.8),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -284,7 +284,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               const SizedBox(height: 28),
 
               // ── Recent Transactions Table ──
-              _buildRecentTransactions(state.recentTransactions),
+              _buildRecentTransactions(state),
             ],
           ],
         ),
@@ -292,13 +292,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     );
   }
 
-  Widget _buildRecentTransactions(List<Transaction> recentTransactions) {
+  Widget _buildRecentTransactions(DashboardState state) {
+    final recentTransactions = state.recentTransactions;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.dividerColor.withOpacity(0.5)),
+        border: Border.all(color: AppTheme.dividerColor.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -333,7 +334,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     Icon(
                       Icons.inbox_rounded,
                       size: 48,
-                      color: AppTheme.textSecondary.withOpacity(0.3),
+                      color: AppTheme.textSecondary.withValues(alpha: 0.3),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -353,12 +354,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               borderRadius: BorderRadius.circular(10),
               child: Table(
                 columnWidths: const {
-                  0: FlexColumnWidth(1.5),
-                  1: FlexColumnWidth(2),
-                  2: FlexColumnWidth(2),
-                  3: FlexColumnWidth(2),
-                  4: FlexColumnWidth(1.5),
-                  5: FlexColumnWidth(1.5),
+                  0: FlexColumnWidth(1.2), // Waktu
+                  1: FlexColumnWidth(1.5), // Bank (New)
+                  2: FlexColumnWidth(1.5), // Tipe
+                  3: FlexColumnWidth(2), // Nominal
+                  4: FlexColumnWidth(1.2), // Adm B
+                  5: FlexColumnWidth(1.2), // Adm P
+                  6: FlexColumnWidth(1.5), // Profit
                 },
                 children: [
                   // Header
@@ -368,6 +370,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     ),
                     children: [
                       _tableHeader('Waktu'),
+                      _tableHeader('Bank'),
                       _tableHeader('Tipe'),
                       _tableHeader('Nominal'),
                       _tableHeader('Admin Bank'),
@@ -378,11 +381,15 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   // Data Rows
                   ...recentTransactions.map((txn) {
                     final isTransfer = txn.type == 'Transfer';
+                    final wallet = state.digitalWallets.firstWhere(
+                      (w) => w.id == txn.walletId,
+                      orElse: () => state.digitalWallets.first,
+                    );
                     return TableRow(
                       decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(
-                            color: AppTheme.dividerColor.withOpacity(0.3),
+                            color: AppTheme.dividerColor.withValues(alpha: 0.3),
                           ),
                         ),
                       ),
@@ -397,6 +404,16 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           ),
                         ),
                         _tableCell(
+                          Text(
+                            wallet.name,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        _tableCell(
                           Row(
                             children: [
                               Container(
@@ -406,7 +423,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                       (isTransfer
                                               ? AppTheme.accent
                                               : AppTheme.accentOrange)
-                                          .withOpacity(0.15),
+                                          .withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Icon(
